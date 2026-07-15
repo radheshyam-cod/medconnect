@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+out/
+build/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Prisma
+apps/api/prisma/migrations/
+
+# Turbo
+.turbo/
+
+# Coverage
+coverage/
+
+# Keploy test artifacts
+.keploy/
+keploy/
+keploy-results/
+
+# Install scripts (Keploy, etc.)
+install.sh
+
+# Cypress
+cypress/videos/
+cypress/screenshots/

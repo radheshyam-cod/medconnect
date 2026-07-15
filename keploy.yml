@@ -1,0 +1,116 @@
+# ──────────────────────────────────────────────
+# Keploy Configuration - MedConnect India
+# ──────────────────────────────────────────────
+# IMPORTANT: This file documents the intended Keploy configuration.
+# Keploy Enterprise (3.x) manages config via `keploy config` CLI
+# and CLI flags (--enable-obfuscation, -p, --build-delay).
+# The pnpm scripts in backend/package.json use these flags directly.
+# ──────────────────────────────────────────────
+#
+# Open-source Keploy syntax is preserved below for reference.
+# For Keploy Enterprise, use:
+#   keploy record -c "node dist/main" -p .keploy --enable-obfuscation
+#   keploy test  -c "node dist/main" -p .keploy --build-delay 10
+#
+# PII/PHI masking: Keploy Enterprise's --enable-obfuscation flag handles this.
+# Auth tokens: Clerk JWTs are automatically handled by Enterprise obfuscation.
+#
+# ──────────────────────────────────────────────
+
+version: api.keploy.io/v1beta1
+kind: Config
+spec:
+  # ─── Global settings applied to both record and test ───
+  global:
+    # Endpoints/paths to completely ignore (no recording, no testing)
+    denylist:
+      - path: /api/v1/docs
+      - path: /api/v1/docs-json
+      - path: /api/v1/swagger
+      - path: /api/v1/health
+      - path: /api/v1/health/readyz
+      - path: /api/v1/health/livez
+      - path: /favicon.ico
+      - path: /metrics
+      - path: /api/webhooks
+
+    # Fields to ignore during comparison (dynamic/noisy fields)
+    ignoredFields:
+      header:
+        - "Date"
+        - "Content-Length"
+        - "Etag"
+        - "Last-Modified"
+        - "X-Request-Id"
+        - "X-Response-Time"
+        - "X-Powered-By"
+        - "Cf-Ray"
+        - "Cf-Cache-Status"
+        - "Server"
+        - "Set-Cookie"
+        - "x-kong-latency"
+        - "x-kong-upstream-latency"
+        - "x-supabase-latency"
+        - "x-amz-request-id"
+        - "x-amz-id-2"
+      body:
+        # Timestamps and dates
+        - ".*createdAt"
+        - ".*updatedAt"
+        - ".*extractedAt"
+        - ".*generatedAt"
+        - ".*eventDate"
+        - ".*endDate"
+        - ".*startDate"
+        - ".*accessedAt"
+        - ".*readAt"
+        - ".*sentAt"
+        - ".*takenAt"
+        - ".*completedAt"
+        - ".*startedAt"
+        - ".*scheduledAt"
+        - ".*dateOfBirth"
+        - ".*documentDate"
+        # Auto-generated IDs
+        - ".*\\.id"
+        - ".*\\.userId"
+        - ".*\\.documentId"
+        - ".*\\.medicationId"
+        - ".*\\.shareLinkId"
+        - ".*\\.resourceId"
+        - ".*\\.groupId"
+        - ".*\\.memberId"
+        - ".*\\.token"
+        # Pagination metadata (varies per run)
+        - ".*meta\\.page"
+        - ".*meta\\.limit"
+        - ".*meta\\.total"
+        - ".*meta\\.totalPages"
+        # Confidence scores
+        - ".*confidence"
+        - ".*ocrConfidence"
+        - ".*feedbackScore"
+
+  # ─── Recording configuration (open-source reference) ───
+  # Keploy Enterprise uses CLI flags instead:
+  #   keploy record -c "node dist/main" -p .keploy --enable-obfuscation
+  record:
+    path: ".keploy"
+    command: "node dist/main"
+
+  # ─── Test/Replay configuration (open-source reference) ───
+  # Keploy Enterprise uses CLI flags instead:
+  #   keploy test -c "node dist/main" -p .keploy --build-delay 10
+  test:
+    delay: 10
+
+  # ─── Mocking configuration (open-source reference) ───
+  mock:
+    path: ".keploy"
+    services:
+      - host: "localhost"
+        port: 6379
+        protocol: "tcp"  # Redis
+      - host: "localhost"
+        port: 5432
+        protocol: "tcp"  # PostgreSQL

@@ -1,0 +1,140 @@
+version: "3.8"
+services:
+    # ─── PostgreSQL 16 with pgvector ───
+    db:
+        image: pgvector/pgvector:pg16
+        container_name: medconnect-db
+        restart: unless-stopped
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: medconnect
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            - keploy-network
+    # ─── Redis 7 for BullMQ ───
+    cache:
+        image: redis:7-alpine
+        container_name: medconnect-redis
+        restart: unless-stopped
+        ports:
+            - "6379:6379"
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            - keploy-network
+    # ─── NestJS Backend API ───
+    api:
+        build:
+            context: ..
+            dockerfile: backend/Dockerfile
+        container_name: medconnect-api
+        restart: unless-stopped
+        environment:
+            NODE_ENV: development
+            API_PORT: 3001
+            API_PREFIX: /api/v1
+            DATABASE_URL: postgresql://postgres:postgres@db:5432/medconnect?schema=public
+            DIRECT_URL: postgresql://postgres:postgres@db:5432/medconnect?schema=public
+            REDIS_HOST: cache
+            REDIS_PORT: 6379
+            REDIS_URL: redis://cache:6379
+            SUPABASE_URL: ${SUPABASE_URL:-http://localhost:8000}
+            SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-dummy-key}
+            SUPABASE_STORAGE_BUCKET: documents
+            CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-dummy-clerk-key}
+            CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-dummy-webhook-secret}
+            GEMINI_API_KEY: ${GEMINI_API_KEY:-dummy-gemini-key}
+            GOOGLE_DOC_AI_PROCESSOR_ID: ${GOOGLE_DOC_AI_PROCESSOR_ID:-dummy-processor-id}
+            CORS_ORIGIN: http://localhost:3000
+            NODE_EXTRA_CA_CERTS: /tmp/keploy-tls/ca.crt
+            REQUESTS_CA_BUNDLE: /tmp/keploy-tls/ca.crt
+            SSL_CERT_FILE: /tmp/keploy-tls/ca.crt
+            CARGO_HTTP_CAINFO: /tmp/keploy-tls/ca.crt
+            JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/tmp/keploy-tls/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit
+        depends_on:
+            keploy-agent:
+                condition: service_healthy
+            db:
+                condition: service_healthy
+            cache:
+                condition: service_healthy
+        volumes:
+            - keploy-tls-certs:/tmp/keploy-tls:ro
+        pid: service:keploy-agent
+        network_mode: service:keploy-agent
+    keploy-agent:
+        image: docker.io/keploy/enterprise:v3.5.88
+        container_name: keploy-v3-9216
+        # Capabilities required by keploy-agent for eBPF interception.
+        # Review and allow only what your security policy permits.
+        cap_add:
+            - BPF
+            - PERFMON
+            - NET_ADMIN # required for network traffic capture (scoped to container's own namespace)
+            - SYS_RESOURCE
+            - SYS_PTRACE
+            - SYS_NICE
+        environment:
+            - BINARY_TO_DOCKER=true
+            - CERT_EXPORT_PATH=/tmp/keploy-tls
+            - KEPLOY_DEBUG_FILE=/keploy-host/agent-debug.log
+        ports:
+            - "59139:59139"
+            - "16789:16789"
+            - "3001:3001"
+        networks:
+            keploy-network:
+                aliases:
+                    - api
+        volumes:
+            - /sys/fs/cgroup:/sys/fs/cgroup
+            - /sys/kernel/debug:/sys/kernel/debug
+            - /sys/fs/bpf:/sys/fs/bpf
+            - keploy-tls-certs:/tmp/keploy-tls
+            - /Users/radheshyambhati/Documents/Ai for India/medconnect-india/backend/.keploy/keploy:/keploy-host
+        command:
+            - --port
+            - "59139"
+            - --proxy-port
+            - "16789"
+            - --dns-port
+            - "26789"
+            - --client-pid
+            - "40527"
+            - --mode
+            - record
+            - --is-docker
+            - --disable-mapping=false
+            - --config-path
+            - /Users/radheshyambhati/Documents/Ai for India/medconnect-india/backend
+            - --build-delay
+            - "30"
+        healthcheck:
+            test:
+                - CMD
+                - /app/keploy-enterprise
+                - health
+                - --check=agent-ready
+            interval: 5s
+            timeout: 5s
+            retries: 60
+            start_period: 10s
+networks:
+    keploy-network:
+        driver: bridge
+        name: keploy-network
+volumes:
+    postgres_data:
+    keploy-tls-certs: {}

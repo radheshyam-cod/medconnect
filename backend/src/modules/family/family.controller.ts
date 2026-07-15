@@ -1,0 +1,40 @@
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { FamilyService } from './family.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { FamilyRelationType } from '@prisma/client';
+
+export class CreateGroupDto {
+  name: string;
+}
+
+export class InviteMemberDto {
+  email: string;
+  relation: FamilyRelationType;
+}
+
+@Controller('family')
+export class FamilyController {
+  constructor(private readonly familyService: FamilyService) {}
+
+  @Get('groups')
+  getGroups(@CurrentUser('id') clerkId: string) {
+    return this.familyService.getFamilyGroups(clerkId);
+  }
+
+  @Post('groups')
+  createGroup(
+    @CurrentUser('id') clerkId: string,
+    @Body() dto: CreateGroupDto
+  ) {
+    return this.familyService.createGroup(clerkId, dto.name);
+  }
+
+  @Post('groups/:id/invite')
+  inviteMember(
+    @CurrentUser('id') clerkId: string,
+    @Param('id') groupId: string,
+    @Body() dto: InviteMemberDto
+  ) {
+    return this.familyService.inviteMember(clerkId, groupId, dto.email, dto.relation);
+  }
+}

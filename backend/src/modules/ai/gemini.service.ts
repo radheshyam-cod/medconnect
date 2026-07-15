@@ -1,0 +1,261 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AIContextService } from '../ai-context/ai-context.service';
+import { MemoryLogger } from '../memory/memory-logger.service';
+
+@Injectable()
+export class GeminiService {
+  private readonly logger = new Logger(GeminiService.name);
+  private genAI: GoogleGenerativeAI | null = null;
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly aiContextService: AIContextService,
+    private readonly memoryLogger: MemoryLogger,
+  ) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+    } else {
+      this.logger.warn('GEMINI_API_KEY not configured. AI features will be unavailable.');
+    }
+  }
+
+  async extractMedicalData(rawText: string, clerkId?: string) {
+    if (!this.genAI) {
+      return this.fallbackExtraction();
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-1.5-pro',
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+
+      // Build enriched prompt with patient context and memory
+      let prompt: string;
+      if (clerkId) {
+        // We need the internal userId - the context service handles this
+        const context = await this.aiContextService.buildExtractionContext(clerkId, rawText);
+        prompt = context.enrichedPrompt;
+        this.memoryLogger.debug('EXTRACTION_WITH_MEMORY', { hasMemory: context.hasMemory });
+      } else {
+        prompt = this.buildExtractionPrompt(rawText);
+      }
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      return JSON.parse(text);
+    } catch (error) {
+      this.logger.error('Gemini extraction failed', error);
+      return this.fallbackExtraction();
+    }
+  }
+
+  async generateTimeline(extractions: any[], clerkId?: string) {
+    if (!this.genAI) {
+      return { events: [], model: 'fallback' };
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+
+      let prompt: string;
+      if (clerkId) {
+        const context = await this.aiContextService.buildTimelineContext(clerkId, extractions);
+        prompt = context.enrichedPrompt;
+        this.memoryLogger.debug('TIMELINE_WITH_MEMORY', { hasMemory: context.hasMemory });
+      } else {
+        prompt = this.buildTimelinePrompt(extractions);
+      }
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const parsed = JSON.parse(text);
+      return { events: parsed.events || [], model: 'gemini-1.5-flash' };
+    } catch (error) {
+      this.logger.error('Gemini timeline generation failed', error);
+      return { events: [], model: 'fallback' };
+    }
+  }
+
+  async summarizePatientHistory(extractions: any[], type: 'PATIENT' | 'DOCTOR', clerkId?: string) {
+    if (!this.genAI) {
+      return { summary: "AI summary not available." };
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ 
+        model: 'gemini-1.5-pro',
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+
+      let prompt: string;
+      if (clerkId) {
+        const context = await this.aiContextService.buildSummaryContext(clerkId, extractions, type);
+        prompt = context.enrichedPrompt;
+        this.memoryLogger.debug('SUMMARY_WITH_MEMORY', { hasMemory: context.hasMemory });
+      } else {
+        prompt = this.buildSummaryPrompt(extractions, type);
+      }
+
+      const result = await model.generateContent(prompt);
+      return JSON.parse(result.response.text());
+    } catch (error) {
+      this.logger.error('Gemini summarization failed', error);
+      return { summary: "Summarization failed." };
+    }
+  }
+
+  async summarizeTimeline(
+    events: Array<{ eventDate: Date; eventType: string; title: string; description?: string | null; severity?: string | null; facility?: string | null; doctorName?: string | null; diseases: string[]; medicines: string[] }>,
+    periodLabel: string,
+    clerkId?: string,
+  ) {
+    if (!this.genAI) {
+      return this.fallbackTimelineSummary(events, periodLabel);
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+
+      const prompt = `You are a medical data analyst reviewing a patient's health timeline events from the last month (${periodLabel}).
+Analyze the events below and return a JSON object with this exact structure:
+{
+  "summary": "A 2-3 paragraph narrative summary of the most important health events and patterns from the last month",
+  "keyEvents": [
+    {
+      "date": "event date",
+      "title": "event title",
+      "type": "event type",
+      "significance": "Why this event was medically significant (1 sentence)"
+    }
+  ],
+  "trends": ["Array of observed health trends or patterns (2-4 items)"],
+  "recommendations": ["Array of practical health recommendations based on the events (2-3 items)"]
+}
+
+Focus on:
+- New diagnoses or conditions
+- Changes in medication
+- Abnormal lab results or significant procedures
+- Hospitalizations or ER visits
+- Patterns in symptoms or visits
+
+Timeline Events:
+${JSON.stringify(events, null, 2)}`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      return JSON.parse(text);
+    } catch (error) {
+      this.logger.error('Gemini timeline summary failed', error);
+      return this.fallbackTimelineSummary(events, periodLabel);
+    }
+  }
+
+  private fallbackTimelineSummary(
+    events: Array<{ eventDate: Date; eventType: string; title: string }>,
+    periodLabel: string,
+  ) {
+    const byType: Record<string, number> = {};
+    for (const e of events) {
+      byType[e.eventType] = (byType[e.eventType] || 0) + 1;
+    }
+    const topTypes = Object.entries(byType)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([type, count]) => `${count} ${type.toLowerCase().replace(/_/g, ' ')}`);
+
+    return {
+      summary: events.length === 0
+        ? `No health events recorded in ${periodLabel}.`
+        : `In ${periodLabel}, you had ${events.length} health event${events.length !== 1 ? 's' : ''}, including ${topTypes.join(', ')}. ${topTypes.length > 0 ? 'Your most frequent activity was ' + topTypes[0] + '.' : ''}`,
+      keyEvents: events.slice(0, 5).map((e) => ({
+        date: e.eventDate.toISOString().split('T')[0],
+        title: e.title || 'Health event',
+        type: e.eventType,
+        significance: 'Recorded in your health timeline.',
+      })),
+      trends: ['Continue monitoring your health regularly.'],
+      recommendations: ['Keep your medical records up to date by uploading new documents.'],
+    };
+  }
+
+  private buildExtractionPrompt(rawText: string): string {
+    return `Extract structured medical entities from the following raw OCR text.
+The text may be messy, contain typos, or be poorly formatted. Do your best to identify true medical concepts.
+Return strictly a JSON object with these exact keys, each containing an array of strings. If none found, return an empty array for that key. Normalize dates to ISO format where possible.
+Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures
+Raw OCR Text:
+${rawText}`;
+  }
+
+  private buildTimelinePrompt(extractions: any[]): string {
+    return `You are a medical data analyst. Given extracted medical data from documents, create a chronological health timeline. Group related events. Each event MUST include the sourceDocumentId from the extraction it came from.
+Output a JSON array of events with this exact structure:
+{
+  "events": [
+    {
+      "eventType": "VISIT|DIAGNOSIS|MEDICATION|LAB_TEST|PROCEDURE|IMAGING|VACCINATION|ALLERGY|HOSPITALIZATION|SURGERY|OTHER",
+      "eventDate": "ISO date string",
+      "endDate": "ISO date string or null",
+      "title": "Short event title",
+      "description": "Detailed description",
+      "severity": "MILD|MODERATE|SEVERE|CRITICAL|null",
+      "facility": "Hospital/clinic name or null",
+      "doctorName": "Doctor name or null",
+      "diseases": ["array of disease names"],
+      "medicines": ["array of medicine names"],
+      "procedureName": "procedure name or null",
+      "labValues": {},
+      "sourceDocumentId": "ID of the source document"
+    }
+  ]
+}
+Extractions:
+${JSON.stringify(extractions)}`;
+  }
+
+  private buildSummaryPrompt(extractions: any[], type: 'PATIENT' | 'DOCTOR'): string {
+    const roleInstruction = type === 'DOCTOR' 
+      ? 'You are writing a concise clinical summary for a physician. Use standard medical terminology and ICD/CPT concepts where applicable.'
+      : 'You are writing a friendly, easy-to-understand health summary for the patient. Avoid complex jargon and explain things simply.';
+
+    return `${roleInstruction}
+Based on the following extracted medical records, provide a comprehensive summary of the patient's health history.
+You MUST return the output strictly as a JSON object with the following exact keys. Use empty arrays if data is not available.
+{
+  "currentConditions": ["string array of conditions/diseases"],
+  "currentMedicines": [{"name": "string", "dosage": "string", "frequency": "string"}],
+  "allergies": ["string array of allergens"],
+  "recentLabs": [{"testName": "string", "date": "string", "value": "string", "abnormal": boolean}],
+  "recentImaging": [{"procedure": "string", "date": "string", "finding": "string"}],
+  "pastSurgeries": [{"procedure": "string", "date": "string"}],
+  "vitalSigns": [{"name": "string", "value": "string", "date": "string"}],
+  "summary": "A detailed 2-3 paragraph narrative summary of their overall health."
+}
+
+Extractions:
+${JSON.stringify(extractions)}`;
+  }
+
+  private fallbackExtraction() {
+    return {
+      diseases: [],
+      medicines: [],
+      doctors: [],
+      hospitals: [],
+      labValues: [],
+      dates: [],
+      procedures: [],
+    };
+  }
+}

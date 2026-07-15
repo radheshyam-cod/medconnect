@@ -1,0 +1,78 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"],
+      "env": [
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+        "CLERK_SECRET_KEY",
+        "DATABASE_URL",
+        "NEXT_PUBLIC_API_URL",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_KEY"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false,
+      "dependsOn": ["db:migrate"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "keploy:init": {
+      "cache": false
+    },
+    "keploy:record": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "keploy:test": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "keploy:replay": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "keploy:update": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "keploy:clean": {
+      "cache": false
+    },
+    "test:api": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:regression": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"]
+    }
+  }
+}

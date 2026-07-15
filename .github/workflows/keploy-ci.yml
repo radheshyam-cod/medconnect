@@ -1,0 +1,261 @@
+# ──────────────────────────────────────────────
+# Keploy CI Pipeline - MedConnect India
+# ──────────────────────────────────────────────
+# Runs on every push and pull request to main.
+# Installs dependencies, lints, typechecks, builds,
+# starts dependencies (PostgreSQL, Redis), runs
+# existing Jest unit tests, then replays Keploy
+# test suites for regression detection.
+# ──────────────────────────────────────────────
+
+name: Keploy CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - "frontend/**"
+      - "**.md"
+      - "docs/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "frontend/**"
+      - "**.md"
+      - "docs/**"
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "10"
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/medconnect_test?schema=public"
+  REDIS_URL: "redis://localhost:6379"
+  CLERK_SECRET_KEY: "test-clerk-secret-key-placeholder"
+  SUPABASE_URL: "http://localhost:8000"
+  SUPABASE_SERVICE_KEY: "test-supabase-key-placeholder"
+
+jobs:
+  # ─── Quality Checks (Lint, TypeCheck, Build) ───
+  quality:
+    name: "Quality Checks"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medconnect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @medconnect/api db:generate
+
+      - name: Run Prisma migrations
+        run: pnpm --filter @medconnect/api db:migrate
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      # Scope quality checks to the backend (Keploy tests backend APIs)
+      - name: Lint check
+        run: pnpm --filter @medconnect/api lint
+
+      - name: Type check
+        run: pnpm --filter @medconnect/api typecheck
+
+      - name: Build
+        run: pnpm --filter @medconnect/api build
+
+  # ─── Unit & Integration Tests (Jest) ───
+  unit-tests:
+    name: "Jest Tests"
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medconnect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @medconnect/api db:generate
+
+      - name: Run unit tests with coverage
+        run: pnpm --filter @medconnect/api test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jest-coverage
+          path: backend/coverage/
+          retention-days: 14
+
+  # ─── Keploy Regression Tests (Replay) ───
+  keploy-regression:
+    name: "Keploy Regression"
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Keploy CLI
+        run: |
+          curl -fsSL https://keploy.io/ent/install.sh | sudo bash
+          which keploy && keploy --version
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @medconnect/api db:generate
+
+      - name: Build the application
+        run: pnpm --filter @medconnect/api build
+
+      # Check if Keploy test suites exist
+      - name: Check for existing test suites
+        id: check-tests
+        run: |
+          if [ -d ".keploy" ] && [ -n "$(ls -A .keploy 2>/dev/null | grep test-set)" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+      # If no test suites exist, run record-only to verify setup
+      - name: Run Keploy record (validate setup)
+        if: steps.check-tests.outputs.has_tests == 'false'
+        run: |
+          echo "No existing Keploy test suites found."
+          echo "Record API traffic first using: pnpm keploy:record"
+          echo "Test suites will be stored in .keploy/test-set-0/"
+
+      # Run Keploy regression tests if test suites exist
+      - name: Run Keploy regression tests
+        if: steps.check-tests.outputs.has_tests == 'true'
+        run: |
+          keploy test \
+            -c "node backend/dist/main" \
+            -p .keploy \
+            --build-delay 15 \
+            --enable-obfuscation
+
+      - name: Upload Keplay test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keploy-results
+          path: |
+            .keploy/
+            keploy/
+          retention-days: 14
+
+      - name: Report regression status
+        if: failure() && steps.check-tests.outputs.has_tests == 'true'
+        run: |
+          echo "❌ REGRESSION DETECTED: Keploy test replay failed."
+          echo "Review the uploaded artifacts for detailed test reports."
+          echo "To update snapshots, run: pnpm keploy:update"
+          exit 1
+
+  # ─── Summary ───
+  summary:
+    name: "CI Summary"
+    runs-on: ubuntu-latest
+    needs: [quality, unit-tests, keploy-regression]
+    if: always()
+    steps:
+      - name: Check build status
+        run: |
+          echo "## MedConnect India CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Quality Checks**: ${{ needs.quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Jest Tests**: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Keploy Regression**: ${{ needs.keploy-regression.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail on any failure
+        if: |
+          needs.quality.result == 'failure' ||
+          needs.unit-tests.result == 'failure' ||
+          needs.keploy-regression.result == 'failure'
+        run: exit 1

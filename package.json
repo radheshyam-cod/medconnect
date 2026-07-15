@@ -1,0 +1,51 @@
+{
+  "name": "medconnect-india",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI-powered Personal Health Record platform for India",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean",
+    "db:migrate": "pnpm --filter @medconnect/api db:migrate",
+    "db:seed": "pnpm --filter @medconnect/api db:seed",
+    "db:studio": "pnpm --filter @medconnect/api db:studio",
+    "keploy:init": "pnpm --filter @medconnect/api keploy:init",
+    "keploy:record": "pnpm --filter @medconnect/api keploy:record",
+    "keploy:test": "pnpm --filter @medconnect/api keploy:test",
+    "keploy:replay": "pnpm --filter @medconnect/api keploy:replay",
+    "keploy:update": "pnpm --filter @medconnect/api keploy:update",
+    "keploy:clean": "pnpm --filter @medconnect/api keploy:clean",
+    "test:api": "pnpm --filter @medconnect/api test:api",
+    "test:regression": "pnpm --filter @medconnect/api test:regression",
+    "test:coverage": "pnpm --filter @medconnect/api test:coverage",
+    "test:e2e": "pnpm --filter @medconnect/api test:e2e",
+    "test": "pnpm --filter @medconnect/api test",
+    "test:all": "pnpm test && pnpm test:coverage && pnpm test:regression",
+    "docker:up": "docker compose -f backend/docker-compose.yml up -d",
+    "docker:down": "docker compose -f backend/docker-compose.yml down",
+    "docker:keploy:record": "pnpm --filter @medconnect/api keploy:docker:record",
+    "docker:keploy:test": "pnpm --filter @medconnect/api keploy:docker:test"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+
+  "packageManager": "pnpm@10.27.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  }
+}

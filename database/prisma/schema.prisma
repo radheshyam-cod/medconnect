@@ -1,0 +1,599 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pg_trgm, vector]
+}
+
+// ──────────────────────────────────────────────
+// AUTH & USER MANAGEMENT
+// ──────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  clerkId        String   @unique
+  email          String
+  fullName       String?
+  phone          String?
+  avatarUrl      String?
+  role           UserRole @default(USER)
+  timezone       String   @default("Asia/Kolkata")
+  preferredLang  String   @default("en")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patientProfile   PatientProfile?
+  documents        Document[]
+  extractions      Extraction[]
+  timelines        Timeline[]
+  medications      Medication[]
+  labResults       LabResult[]
+  doctorSummaries  DoctorSummary[]
+  familyGroups     FamilyGroup[]
+  familyInvitesSent FamilyGroupMember[] @relation("Sender")
+  shareLinks       ShareLink[]
+  accessLogs       AccessLog[]
+  notificationPref NotificationPreference?
+  backgroundJobs   BackgroundJob[]
+  userSettings     UserSetting[]
+  notificationList Notification[]
+  integrationConfigs IntegrationConfig[]
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  CAREGIVER
+}
+
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────────
+// PATIENTS
+// ──────────────────────────────────────────────
+
+model PatientProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth     DateTime?
+  gender          String?
+  bloodGroup      String?
+  allergies       String[]
+  emergencyContact String?
+  abhaId          String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────
+// FAMILY
+// ──────────────────────────────────────────────
+
+model FamilyGroup {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   FamilyGroupMember[]
+}
+
+model FamilyGroupMember {
+  id         String             @id @default(cuid())
+  groupId    String
+  group      FamilyGroup        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     User               @relation("Sender", fields: [memberId], references: [id], onDelete: Cascade)
+  relation   FamilyRelationType
+  permission PermissionLevel    @default(VIEWER)
+  invitedBy  String
+  status     InviteStatus       @default(PENDING)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([groupId, memberId])
+  @@index([memberId])
+}
+
+enum FamilyRelationType {
+  SELF
+  SPOUSE
+  PARENT
+  CHILD
+  SIBLING
+  GRANDPARENT
+  CAREGIVER
+  OTHER
+}
+
+enum PermissionLevel {
+  VIEWER
+  EDITOR
+  ADMIN
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+}
+
+// ──────────────────────────────────────────────
+// DOCUMENTS
+// ──────────────────────────────────────────────
+
+model Document {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName      String
+  fileType      String
+  fileSize      Int
+  storagePath   String
+  storageBucket String          @default("documents")
+  publicUrl     String?
+  documentType  DocumentType?
+  documentDate  DateTime?
+  status        ProcessingStatus @default(PENDING)
+  ocrConfidence Float?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  extractions   Extraction[]
+  timelineEvents Timeline[]
+  ocrErrors     OcrError[]
+  medications   Medication[]
+  labResults    LabResult[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, documentType])
+}
+
+enum DocumentType {
+  PRESCRIPTION
+  LAB_REPORT
+  DISCHARGE_SUMMARY
+  IMAGING_REPORT
+  VACCINATION_CARD
+  HEALTH_CARD
+  INSURANCE
+  OTHER
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Extraction {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  diseases    Json?
+  medicines   Json?
+  doctors     Json?
+  hospitals   Json?
+  labValues   Json?
+  dates       Json?
+  procedures  Json?
+
+  rawOcrText  String?
+  aiSummary   String?
+  confidence  Float?
+  extractedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([userId, extractedAt])
+}
+
+model OcrError {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  errorMessage String
+  errorCode    String?
+  processor    String
+  rawResponse  Json?
+  retryCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+// ──────────────────────────────────────────────
+// HEALTH TIMELINE
+// ──────────────────────────────────────────────
+
+model Timeline {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId  String?
+  document    Document?       @relation(fields: [documentId], references: [id])
+  eventType   TimelineEventType
+  eventDate   DateTime
+  endDate     DateTime?
+  title       String
+  description String?
+  severity    SeverityLevel?
+  facility    String?
+  doctorName  String?
+  source      TimelineSource  @default(MANUAL)
+  diseases    String[]
+  medicines   String[]
+  procedureName String?
+  labValues   Json?
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, eventDate])
+  @@index([userId, eventType])
+  @@index([documentId])
+}
+
+enum TimelineEventType {
+  VISIT
+  DIAGNOSIS
+  MEDICATION
+  LAB_TEST
+  PROCEDURE
+  IMAGING
+  VACCINATION
+  ALLERGY
+  HOSPITALIZATION
+  SURGERY
+  OTHER
+}
+
+enum SeverityLevel {
+  MILD
+  MODERATE
+  SEVERE
+  CRITICAL
+}
+
+enum TimelineSource {
+  OCR
+  FHIR_IMPORT
+  MANUAL
+  ABDM
+  SHARED
+}
+
+// ──────────────────────────────────────────────
+// MEDICATIONS
+// ──────────────────────────────────────────────
+
+model Medication {
+  id           String              @id @default(cuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  dosage       String?
+  frequency    String?
+  route        String?
+  prescribedBy String?
+  pharmacy     String?
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean             @default(true)
+  notes        String?
+  documentId   String?
+  document     Document?           @relation(fields: [documentId], references: [id])
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  reminders    MedicationReminder[]
+
+  @@index([userId, isActive])
+  @@index([userId, name])
+}
+
+model MedicationReminder {
+  id           String     @id @default(cuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  time         DateTime
+  daysOfWeek   Int[]
+  isTaken      Boolean    @default(false)
+  takenAt      DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([medicationId, time])
+}
+
+// ──────────────────────────────────────────────
+// LAB RESULTS
+// ──────────────────────────────────────────────
+
+model LabResult {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testName       String
+  category       String?
+  value          String
+  unit           String?
+  referenceRange String?
+  isAbnormal     Boolean  @default(false)
+  date           DateTime
+  facility       String?
+  documentId     String?
+  document       Document? @relation(fields: [documentId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, testName])
+  @@index([userId, date])
+  @@index([userId, testName, date])
+}
+
+// ──────────────────────────────────────────────
+// DOCTOR SUMMARY
+// ──────────────────────────────────────────────
+
+model DoctorSummary {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentConditions Json
+  currentMedicines  Json
+  allergies         Json
+  recentLabs        Json
+  recentImaging     Json
+  pastSurgeries     Json
+  vitalSigns        Json
+  immunizations     Json
+  aiModel           String?
+  confidence        Float?
+  feedbackScore     Int?
+  generatedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId, generatedAt])
+}
+
+// ──────────────────────────────────────────────
+// SHARING
+// ──────────────────────────────────────────────
+
+model ShareLink {
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token             String         @unique @default(cuid())
+  title             String?
+  accessLevel       PermissionLevel @default(VIEWER)
+  expiresAt         DateTime?
+  maxAccessCount    Int?
+  currentAccessCount Int            @default(0)
+  isRevoked         Boolean         @default(false)
+  requireAuth       Boolean         @default(false)
+  allowedEmails     String[]
+  qrCodeUrl         String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  sharedResources   SharedResource[]
+  accessLogs        AccessLog[]
+
+  @@index([token])
+  @@index([userId])
+}
+
+model SharedResource {
+  id           String   @id @default(cuid())
+  shareLinkId  String
+  shareLink    ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  resourceType String
+  resourceId   String
+  createdAt    DateTime @default(now())
+
+  @@index([shareLinkId])
+}
+
+model AccessLog {
+  id          String      @id @default(cuid())
+  shareLinkId String
+  shareLink   ShareLink   @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  ipAddress   String?
+  userAgent   String?
+  action      AccessAction
+  metadata    Json?
+  accessedAt  DateTime    @default(now())
+
+  @@index([shareLinkId])
+  @@index([shareLinkId, accessedAt])
+}
+
+enum AccessAction {
+  VIEW_DOCUMENT
+  VIEW_TIMELINE
+  VIEW_SUMMARY
+  DOWNLOAD
+  PRINT
+  ACCESS_DENIED
+}
+
+// ──────────────────────────────────────────────
+// BACKGROUND JOBS
+// ──────────────────────────────────────────────
+
+model BackgroundJob {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobType      JobType
+  status       JobStatus @default(PENDING)
+  payload      Json?
+  result       Json?
+  errorMessage String?
+  progress     Int       @default(0)
+  priority     Int       @default(0)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, jobType, status])
+  @@index([status, scheduledAt])
+}
+
+enum JobType {
+  OCR_PROCESSING
+  AI_SUMMARY
+  AI_TIMELINE
+  SEMANTIC_INDEX
+  FHIR_SYNC
+  ABDM_SYNC
+  DATA_EXPORT
+  DATA_IMPORT
+}
+
+enum JobStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ──────────────────────────────────────────────
+// NOTIFICATIONS
+// ──────────────────────────────────────────────
+
+model Notification {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  body         String
+  type         NotificationType
+  resourceType String?
+  resourceId   String?
+  isRead       Boolean           @default(false)
+  readAt       DateTime?
+  createdAt    DateTime          @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  MEDICATION_REMINDER
+  DOCUMENT_PROCESSED
+  SHARE_ACCESSED
+  APPOINTMENT_REMINDER
+  LAB_ABNORMAL
+  FAMILY_INVITE
+  SYSTEM
+}
+
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled Boolean  @default(true)
+  pushEnabled  Boolean  @default(true)
+  reminders    Boolean  @default(true)
+  labAlerts    Boolean  @default(true)
+  shareAlerts  Boolean  @default(true)
+  familyAlerts Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────
+// INTEGRATIONS
+// ──────────────────────────────────────────────
+
+model IntegrationConfig {
+  id             String                  @id @default(cuid())
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerType   IntegrationProviderType
+  displayName    String?
+  isEnabled      Boolean                 @default(true)
+  credentials    Json?
+  settings       Json?
+  lastSyncAt     DateTime?
+  lastSyncStatus SyncStatus?
+  errorMessage   String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([userId, providerType])
+  @@index([userId, isEnabled])
+}
+
+enum IntegrationProviderType {
+  ABDM
+  FHIR
+  HOSPITAL_API
+  MANUAL_IMPORT
+}
+
+enum SyncStatus {
+  NOT_SYNCED
+  SYNCING
+  SYNCED
+  FAILED
+}
+
+// ──────────────────────────────────────────────
+// AUDIT
+// ──────────────────────────────────────────────
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action, createdAt])
+}

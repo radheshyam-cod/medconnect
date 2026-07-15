@@ -1,0 +1,95 @@
+# ──────────────────────────────────────────────
+# MedConnect India - Local Development Stack
+# ──────────────────────────────────────────────
+# Services:
+#   api         - NestJS backend (port 3001)
+#   db          - PostgreSQL 16 with pgvector
+#   cache       - Redis 7 for BullMQ queues
+# ──────────────────────────────────────────────
+# Usage:
+#   docker compose up -d                     # Start all services
+#   docker compose up -d db cache            # Start only dependencies
+#   keploy record -c "docker compose up api" --containerName "medconnect-api"
+#   keploy test  -c "docker compose up api" --containerName "medconnect-api"
+# ──────────────────────────────────────────────
+
+version: "3.8"
+
+networks:
+  keploy-network:
+    driver: bridge
+    name: keploy-network
+
+services:
+  # ─── PostgreSQL 16 with pgvector ───
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: medconnect-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: medconnect
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - keploy-network
+
+  # ─── Redis 7 for BullMQ ───
+  cache:
+    image: redis:7-alpine
+    container_name: medconnect-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - keploy-network
+
+  # ─── NestJS Backend API ───
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: medconnect-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      API_PORT: 3001
+      API_PREFIX: /api/v1
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/medconnect?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/medconnect?schema=public
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+      REDIS_URL: redis://cache:6379
+      SUPABASE_URL: ${SUPABASE_URL:-http://localhost:8000}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-dummy-key}
+      SUPABASE_STORAGE_BUCKET: documents
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-dummy-clerk-key}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-dummy-webhook-secret}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-dummy-gemini-key}
+      GOOGLE_DOC_AI_PROCESSOR_ID: ${GOOGLE_DOC_AI_PROCESSOR_ID:-dummy-processor-id}
+      CORS_ORIGIN: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks:
+      - keploy-network
+
+volumes:
+  postgres_data:
