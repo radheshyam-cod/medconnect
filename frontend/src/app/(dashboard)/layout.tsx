@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { VoiceAssistantWidget } from "@/components/voice-assistant/voice-assistant-widget";
 
 const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -161,6 +162,8 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      <VoiceAssistantWidget />
     </div>
   );
 }

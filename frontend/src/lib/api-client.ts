@@ -18,7 +18,15 @@ export function setTokenProvider(fn: () => Promise<string | null>) {
 
 async function getClerkToken(): Promise<string | null> {
   if (_getClerkTokenFn) {
-    return _getClerkTokenFn();
+    const token = await _getClerkTokenFn();
+    if (token) return token;
+  }
+  if (typeof window !== "undefined" && (window as any).Clerk?.session) {
+    try {
+      return await (window as any).Clerk.session.getToken();
+    } catch (e) {
+      console.warn("Direct Clerk token fetch failed:", e);
+    }
   }
   return null;
 }
@@ -268,6 +276,38 @@ export const sharing = {
     request<void>(`/sharing/links/${id}`, { method: "DELETE" }),
 };
 
+export const voice = {
+  interact: (data: { textCommand?: string; languageCode?: string; voiceName?: string }) =>
+    request<{
+      transcript: string;
+      responseText: string;
+      audioBase64?: string | null;
+      action: {
+        type: 'SEARCH_RESULTS' | 'NAVIGATE_UPLOAD' | 'HEALTH_QA' | 'NAVIGATE';
+        navigationUrl?: string;
+        payload?: Record<string, unknown> | unknown[] | null;
+      };
+    }>("/voice/interact", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  interactAudio: (file: Blob | File, languageCode: string = "hi-IN", voiceName?: string) => {
+    const metadata: Record<string, string> = { languageCode };
+    if (voiceName) metadata.voiceName = voiceName;
+    return uploadFile<{
+      transcript: string;
+      responseText: string;
+      audioBase64?: string | null;
+      action: {
+        type: 'SEARCH_RESULTS' | 'NAVIGATE_UPLOAD' | 'HEALTH_QA' | 'NAVIGATE';
+        navigationUrl?: string;
+        payload?: Record<string, unknown> | unknown[] | null;
+      };
+    }>("/voice/interact", file instanceof File ? file : new File([file], "voice.wav", { type: "audio/wav" }), metadata);
+  },
+};
+
 export const api = {
   dashboard,
   documents,
@@ -279,6 +319,7 @@ export const api = {
   family,
   sharing,
   fhir,
+  voice,
 };
 
 export default api;
