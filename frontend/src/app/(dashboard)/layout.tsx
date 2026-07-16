@@ -51,40 +51,58 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+
+  const isAuthReady = isLoaded && !!user;
+
+  // Sync user details to backend DB
+  useEffect(() => {
+    if (isAuthReady && user) {
+      api.auth.sync({
+        email: user.primaryEmailAddress?.emailAddress || "",
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+      }).catch((err) => console.error("Failed to sync user:", err));
+    }
+  }, [isAuthReady, user]);
 
   // Fetch counts for sidebar badges
   const { data: dashboardStats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: () => api.dashboard.getStats(),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthReady,
   });
 
   const { data: timelineSummary } = useQuery({
     queryKey: ["timeline-summary"],
     queryFn: () => api.timeline.getSummary(),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthReady,
   });
 
   const { data: documents } = useQuery({
     queryKey: ["documents"],
     queryFn: () => api.documents.list({ limit: 1 }),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthReady,
   });
 
   const { data: labs } = useQuery({
     queryKey: ["labs", { page: 1, limit: 1 }],
     queryFn: () => api.labs.list({ page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthReady,
   });
 
   const { data: medications } = useQuery({
     queryKey: ["medications", { isActive: true }],
     queryFn: () => api.medications.list({ isActive: true }),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthReady,
   });
 
   // Badge counts from API
@@ -140,6 +158,14 @@ export default function DashboardLayout({
       setShowSearch(false);
     }
   }, [searchQuery, router]);
+
+  if (!isAuthReady) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

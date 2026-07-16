@@ -21,7 +21,7 @@ import { VoiceService } from './voice.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SpeechToTextDto, SpeechToTextResponseDto } from './dto/speech-to-text.dto';
 import { TextToSpeechDto, TextToSpeechResponseDto } from './dto/text-to-speech.dto';
-import { VoiceChatDto, VoiceChatResponseDto } from './dto/chat.dto';
+import { VoiceChatDto, VoiceChatResponseDto, TextChatDto } from './dto/chat.dto';
 
 const MAX_AUDIO_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -131,6 +131,31 @@ export class VoiceController {
       voice || 'Pranav',
       conversationId || undefined,
       includeAudio !== 'false',
+    );
+  }
+
+  @Post('text-chat')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Text chat with AI health assistant',
+    description:
+      'Send a text question. The system will:\n' +
+      '1. Analyze the question with Gemini using patient health data\n' +
+      '2. Generate a spoken response using Gnani.ai TTS (optional)\n\n' +
+      'Returns the AI answer and optionally audio.',
+  })
+  async textChat(
+    @CurrentUser('id') clerkId: string,
+    @Body() dto: TextChatDto,
+  ): Promise<VoiceChatResponseDto> {
+    const validatedLang = VoiceService.validateLanguageCode(dto.language_code || 'en-IN');
+    return this.voiceService.textChat(
+      clerkId,
+      dto.text,
+      validatedLang,
+      dto.voice || 'Pranav',
+      dto.conversation_id || undefined,
+      dto.include_audio === true || dto.include_audio === 'true',
     );
   }
 }

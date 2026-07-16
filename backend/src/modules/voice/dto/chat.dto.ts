@@ -43,6 +43,46 @@ export class VoiceChatDto {
   include_audio?: string = 'true';
 }
 
+export class TextChatDto {
+  @ApiProperty({
+    description: 'The user\'s question text',
+  })
+  @IsString()
+  text: string;
+
+  @ApiPropertyOptional({
+    description: 'Language code (BCP-47). Defaults to en-IN.',
+    default: 'en-IN',
+    enum: ['en-IN', 'hi-IN', 'ta-IN', 'te-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'gu-IN', 'pa-IN', 'bn-IN'],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['en-IN', 'hi-IN', 'ta-IN', 'te-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'gu-IN', 'pa-IN', 'bn-IN'])
+  language_code?: string = 'en-IN';
+
+  @ApiPropertyOptional({
+    description: 'Voice for TTS response. Defaults to Pranav.',
+    default: 'Pranav',
+  })
+  @IsOptional()
+  @IsString()
+  voice?: string = 'Pranav';
+
+  @ApiPropertyOptional({
+    description: 'Conversation ID for continuing a previous conversation. Omit to start new.',
+  })
+  @IsOptional()
+  @IsString()
+  conversation_id?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether to return audio in the response (true/false/boolean). Defaults to true.',
+    default: 'true',
+  })
+  @IsOptional()
+  include_audio?: boolean | string = 'true';
+}
+
 export class VoiceChatResponseDto {
   @ApiProperty()
   success: boolean;

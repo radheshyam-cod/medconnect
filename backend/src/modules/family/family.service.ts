@@ -106,4 +106,32 @@ export class FamilyService {
       }
     });
   }
+
+  async respondToInvite(clerkId: string, groupId: string, action: 'ACCEPT' | 'REJECT') {
+    const userId = await this.getInternalUserId(clerkId);
+    
+    const membership = await this.prisma.familyGroupMember.findUnique({
+      where: {
+        groupId_memberId: {
+          groupId,
+          memberId: userId
+        }
+      }
+    });
+
+    if (!membership || membership.status !== 'PENDING') {
+      throw new BadRequestException('No pending invitation found for this group');
+    }
+
+    if (action === 'ACCEPT') {
+      return this.prisma.familyGroupMember.update({
+        where: { id: membership.id },
+        data: { status: 'ACCEPTED' }
+      });
+    } else {
+      return this.prisma.familyGroupMember.delete({
+        where: { id: membership.id }
+      });
+    }
+  }
 }

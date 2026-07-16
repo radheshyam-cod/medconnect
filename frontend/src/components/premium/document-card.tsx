@@ -150,18 +150,16 @@ export function DocumentCard({
       {viewMode === "grid" && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm" asChild>
-              <Link href={`/documents/${document.id}`}>
-                <Eye className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
+              <Eye className="h-3.5 w-3.5" />
+            </div>
             {onDownload && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm" onClick={() => onDownload(document.id)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm" onClick={(e) => { e.preventDefault(); onDownload(document.id); }}>
                 <Download className="h-3.5 w-3.5" />
               </Button>
             )}
             {onDelete && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm text-red-500 hover:text-red-600" onClick={() => onDelete(document.id)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm text-red-500 hover:text-red-600" onClick={(e) => { e.preventDefault(); onDelete(document.id); }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}

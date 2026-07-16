@@ -45,6 +45,7 @@ export function VoiceAssistant({
     startRecording,
     stopRecording,
     sendAudio,
+    sendText,
     playAudio,
     cancelRecording,
     clearMessages,
@@ -157,9 +158,7 @@ export function VoiceAssistant({
                         <button
                           key={suggestion.text}
                           onClick={async () => {
-                            // Use speech to have the assistant read the suggestion as a query
-                            // In a real scenario, this would send the text to the /chat endpoint
-                            await speakText(suggestion.text);
+                            await sendText(suggestion.text);
                           }}
                           className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] text-primary transition-colors hover:bg-primary/10"
                         >
@@ -213,7 +212,7 @@ export function VoiceAssistant({
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       if (textInput.trim()) {
-                        speakText(textInput.trim());
+                        sendText(textInput.trim());
                         setTextInput("");
                       }
                     }
@@ -222,7 +221,7 @@ export function VoiceAssistant({
                 <button
                   onClick={() => {
                     if (textInput.trim()) {
-                      speakText(textInput.trim());
+                      sendText(textInput.trim());
                       setTextInput("");
                     }
                   }}

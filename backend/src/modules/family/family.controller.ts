@@ -46,4 +46,13 @@ export class FamilyController {
   ) {
     return this.familyService.inviteMember(clerkId, groupId, dto.email, dto.relation);
   }
+
+  @Post('groups/:id/respond')
+  respondToInvite(
+    @CurrentUser('id') clerkId: string,
+    @Param('id') groupId: string,
+    @Body('action') action: 'ACCEPT' | 'REJECT'
+  ) {
+    return this.familyService.respondToInvite(clerkId, groupId, action);
+  }
 }

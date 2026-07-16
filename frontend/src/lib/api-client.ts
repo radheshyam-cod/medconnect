@@ -221,7 +221,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({ message: "Request failed" }));
-      throw new ApiError(response.status, errorBody.message || errorBody.error || "Unknown error");
+      let errorMessage = errorBody.message || errorBody.error || "Unknown error";
+      if (Array.isArray(errorMessage)) errorMessage = errorMessage.join(", ");
+      throw new ApiError(response.status, errorMessage);
     }
 
     if (response.status === 204) return undefined as T;
@@ -463,6 +465,12 @@ export const family = {
       method: "POST",
       body: JSON.stringify({ email, relation }),
     }),
+
+  respondToInvite: (groupId: string, action: "ACCEPT" | "REJECT") =>
+    request<any>(`/family/groups/${groupId}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }),
 };
 
 export const sharing = {
@@ -475,6 +483,14 @@ export const sharing = {
     }),
 
   revokeLink: (id: string) => request<void>(`/sharing/links/${id}`, { method: "DELETE" }),
+};
+
+export const auth = {
+  sync: (data: { email: string; firstName?: string; lastName?: string }) =>
+    request<{ success: boolean; userId: string }>("/auth/sync", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const health = {
@@ -558,6 +574,7 @@ export const api = {
   fhir,
   voice,
   health,
+  auth,
 };
 
 export default api;

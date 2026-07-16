@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { voiceChat, speechToText, textToSpeech } from "@/services/voice.api";
+import { voiceChat, speechToText, textToSpeech, textChat } from "@/services/voice.api";
 
 // ─── Types ───
 
@@ -36,6 +36,7 @@ export interface VoiceActions {
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   sendAudio: () => Promise<void>;
+  sendText: (text: string) => Promise<void>;
   playAudio: (audioBase64: string, mimeType: string) => Promise<void>;
   cancelRecording: () => void;
   clearMessages: () => void;
@@ -231,6 +232,58 @@ export function useVoice(options?: {
     }
   }, [conversationId, languageCode, voice]);
 
+  const sendText = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    try {
+      setError(null);
+      setStatus("processing");
+      setIsProcessing(true);
+
+      const userMsg: VoiceMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text,
+        timestamp: Date.now(),
+      };
+      // Optimistically add user message
+      setMessages((prev) => [...prev, userMsg]);
+
+      const result = await textChat(text, {
+        languageCode,
+        voice,
+        conversationId: conversationId || undefined,
+        includeAudio: true,
+      });
+
+      const assistantMsg: VoiceMessage = {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        text: result.answer,
+        audioUrl: result.audioBase64
+          ? `data:${result.audioMimeType || "audio/wav"};base64,${result.audioBase64}`
+          : undefined,
+        timestamp: Date.now() + 1,
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+      setConversationId(result.conversationId);
+
+      if (result.audioBase64) {
+        // playAudioFromBase64 needs to be defined before sendText or hoisted. It is defined with useCallback below.
+        // I will use playAudioFromBase64 when it's called.
+        await playAudioFromBase64(result.audioBase64, result.audioMimeType || "audio/wav");
+      }
+      setStatus("idle");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Text chat failed.";
+      setError(message);
+      setStatus("error");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [conversationId, languageCode, voice]);
+
   const playAudioFromBase64 = useCallback(
     (base64: string, mimeType: string): Promise<void> => {
       return new Promise((resolve) => {
@@ -305,6 +358,7 @@ export function useVoice(options?: {
     startRecording,
     stopRecording,
     sendAudio,
+    sendText,
     playAudio,
     cancelRecording,
     clearMessages,

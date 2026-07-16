@@ -75,6 +75,11 @@ export default function DocumentsPage() {
       limit: 50,
     }),
     enabled: !showUpload, // Don't refetch while upload dialog is open
+    refetchInterval: (query) => {
+      const docs = (query.state.data as any)?.documents ?? [];
+      const hasProcessing = docs.some((d: any) => ["PENDING", "PROCESSING", "EXTRACTING"].includes(d.status));
+      return hasProcessing ? 3000 : false;
+    },
   });
 
   const documents = data?.documents ?? [];

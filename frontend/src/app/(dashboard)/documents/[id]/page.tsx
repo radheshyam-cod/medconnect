@@ -64,6 +64,21 @@ export default function DocumentDetailPage() {
     // In a real app, this would call a backend endpoint to re-process
   };
 
+  const handleGenerateTimeline = async () => {
+    if (!document?.extraction?.id) {
+      toast.error("No medical data extracted from this document yet.");
+      return;
+    }
+    const loadingToast = toast.loading("Generating timeline from medical data...");
+    try {
+      await api.timeline.generate([document.extraction.id]);
+      toast.success("Timeline generated successfully!", { id: loadingToast });
+      router.push("/timeline");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate timeline", { id: loadingToast });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -345,7 +360,7 @@ export default function DocumentDetailPage() {
               <Button variant="outline" size="sm" className="w-full justify-start" onClick={regenerateExtraction}>
                 <RefreshCw className="h-4 w-4 mr-2" /> Regenerate Extraction
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => toast.info("Timeline generation coming soon")}>
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleGenerateTimeline}>
                 <Sparkles className="h-4 w-4 mr-2" /> Generate Timeline
               </Button>
               <Button variant="destructive" size="sm" className="w-full justify-start" onClick={handleDelete}>

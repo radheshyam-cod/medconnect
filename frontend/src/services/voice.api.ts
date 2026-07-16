@@ -127,3 +127,57 @@ export async function voiceChat(
     totalLatencyMs: number;
   };
 }
+
+/**
+ * Text Chat: Send text question, get AI answer + optionally audio.
+ */
+export async function textChat(
+  text: string,
+  options?: {
+    languageCode?: string;
+    voice?: string;
+    conversationId?: string;
+    includeAudio?: boolean;
+  },
+): Promise<{
+  text: string;
+  answer: string;
+  audioBase64?: string;
+  audioMimeType?: string;
+  conversationId: string;
+  totalLatencyMs: number;
+}> {
+  const headers = await getAuthHeaders();
+  
+  const body = {
+    text,
+    language_code: options?.languageCode || "en-IN",
+    voice: options?.voice || "Pranav",
+    conversation_id: options?.conversationId,
+    include_audio: options?.includeAudio !== false ? "true" : "false",
+  };
+
+  const response = await fetch(`${API_BASE}/voice/text-chat`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Text chat failed" }));
+    throw new Error(error.message || error.error || "Text chat failed");
+  }
+
+  const json = await response.json();
+  return json.data as {
+    text: string;
+    answer: string;
+    audioBase64?: string;
+    audioMimeType?: string;
+    conversationId: string;
+    totalLatencyMs: number;
+  };
+}

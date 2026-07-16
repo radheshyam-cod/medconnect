@@ -344,6 +344,65 @@ export class VoiceService implements OnModuleDestroy {
     };
   }
 
+  async textChat(
+    clerkId: string,
+    text: string,
+    languageCode: string,
+    voice: string,
+    conversationId?: string,
+    includeAudio?: boolean,
+  ): Promise<VoiceChatResponseDto> {
+    const overallStart = Date.now();
+    const userId = await this.getInternalUserId(clerkId);
+
+    const userText = text.trim();
+    if (!userText) {
+      throw new BadRequestException('Text cannot be empty.');
+    }
+
+    const { conversation, id: convId } = this.getOrCreateConversation(conversationId, userId);
+    conversation.messages.push({ role: 'user', text: userText, timestamp: Date.now() });
+
+    const aiStart = Date.now();
+    let aiAnswer: string;
+    try {
+      aiAnswer = await this.generateAnswer(userId, userText, conversation.messages);
+    } catch (error) {
+      this.logger.error(`CHAT_AI_FAILED | ${error instanceof Error ? error.message : ''}`);
+      aiAnswer = 'I encountered a technical issue. Please try again.';
+    }
+    const aiLatencyMs = Date.now() - aiStart;
+
+    conversation.messages.push({ role: 'assistant', text: aiAnswer, timestamp: Date.now() });
+    if (conversation.messages.length > 10) conversation.messages = conversation.messages.slice(-10);
+
+    let ttsLatencyMs: number | undefined;
+    let audioBase64: string | undefined;
+    let audioMimeType: string | undefined;
+
+    if (includeAudio) {
+      const ttsStart = Date.now();
+      try {
+        if (!this.gnaniProvider.isAvailable) {
+          throw new ServiceUnavailableException('Gnani.ai is not configured.');
+        }
+        const ttsResult: GnaniTtsResult = await this.gnaniProvider.textToSpeech(aiAnswer, languageCode);
+        ttsLatencyMs = Date.now() - ttsStart;
+        audioBase64 = ttsResult.audioBuffer.toString('base64');
+        audioMimeType = 'audio/wav';
+      } catch {
+        this.logger.warn('CHAT_TTS_FAILED | continuing without audio');
+      }
+    }
+
+    return {
+      success: true, text: userText, answer: aiAnswer,
+      audioBase64, audioMimeType, conversationId: convId,
+      sttLatencyMs: 0, aiLatencyMs, ttsLatencyMs,
+      totalLatencyMs: Date.now() - overallStart,
+    };
+  }
+
   /**
    * Generate AI answer using the existing services pipeline.
    *

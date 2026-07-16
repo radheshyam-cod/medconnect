@@ -74,6 +74,18 @@ export default function FamilyPage() {
     },
   });
 
+  const respondMutation = useMutation({
+    mutationFn: ({ groupId, action }: { groupId: string; action: "ACCEPT" | "REJECT" }) =>
+      api.family.respondToInvite(groupId, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["family-groups"] });
+      toast.success("Responded to invitation!");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to respond to invitation");
+    },
+  });
+
   const ownedGroups = (data as any)?.owned || [];
   const memberGroups = (data as any)?.memberOf || [];
 
@@ -319,7 +331,35 @@ export default function FamilyPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="text-[10px]">{m.relation}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px]">{m.relation}</Badge>
+                        {m.status === "PENDING" && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs px-2"
+                              disabled={respondMutation.isPending}
+                              onClick={() => respondMutation.mutate({ groupId: m.groupId, action: "REJECT" })}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs px-2 bg-emerald-600 hover:bg-emerald-700"
+                              disabled={respondMutation.isPending}
+                              onClick={() => respondMutation.mutate({ groupId: m.groupId, action: "ACCEPT" })}
+                            >
+                              Accept
+                            </Button>
+                          </div>
+                        )}
+                        {m.status === "ACCEPTED" && (
+                          <Badge variant="success" className="text-[10px]">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Accepted
+                          </Badge>
+                        )}
+                      </div>
                     </motion.div>
                   ))}
                 </div>
