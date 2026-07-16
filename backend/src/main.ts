@@ -12,17 +12,27 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Security headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    }),
+  );
 
   // CORS
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(",") || [
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ],
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"]
+        : true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
   });
 
   // Global prefix
@@ -73,7 +83,7 @@ async function bootstrap() {
 
   // Start server
   const port = process.env.API_PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, "0.0.0.0");
   logger.log(`MedConnect India API running on http://localhost:${port}${apiPrefix}`);
   logger.log(`Swagger docs at http://localhost:${port}${apiPrefix}/docs`);
 }
