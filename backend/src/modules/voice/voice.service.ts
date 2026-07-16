@@ -8,11 +8,11 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { z } from 'zod';
 import { PrismaService } from '../database/prisma.service';
 import { MemoryService } from '../memory/memory.service';
 import { ContextBuilder } from '../ai-context/context-builder.service';
 import { PromptBuilder } from '../ai-context/prompt-builder.service';
+import { GeminiService } from '../ai/gemini.service';
 
 import {
   GNANI_PROVIDER_TOKEN,
@@ -27,20 +27,6 @@ import { VoiceChatResponseDto } from './dto/chat.dto';
 const MAX_CONVERSATIONS = 100;
 const CONVERSATION_TTL_MS = 30 * 60 * 1000;
 
-// Zod schema for Gemini API response validation (replaces unsafe `as` casts)
-const GeminiResponseSchema = z.object({
-  candidates: z.array(
-    z.object({
-      content: z.object({
-        parts: z.array(
-          z.object({
-            text: z.string(),
-          }),
-        ),
-      }),
-    }),
-  ).optional(),
-});
 
 interface Conversation {
   userId: string;
@@ -66,7 +52,7 @@ export class VoiceService implements OnModuleDestroy {
     private readonly memoryService: MemoryService,
     private readonly contextBuilder: ContextBuilder,
     private readonly promptBuilder: PromptBuilder,
-
+    private readonly geminiService: GeminiService,
   ) {
     this.maxAudioSizeBytes =
       this.configService.get<number>('GNANI_MAX_AUDIO_SIZE_MB', 10) * 1024 * 1024;
@@ -176,7 +162,7 @@ export class VoiceService implements OnModuleDestroy {
         existing.lastAccessedAt = Date.now();
         return { conversation: existing, id: convId };
       }
-      throw new NotFoundException('Conversation not found or access denied');
+      this.logger.warn(`Conversation ${convId} not found or expired. Starting a new session.`);
     }
 
     if (this.conversations.size >= MAX_CONVERSATIONS) {
@@ -226,9 +212,10 @@ export class VoiceService implements OnModuleDestroy {
         latencyMs: Date.now() - startTime,
         detectedLanguage: languageCode,
       };
-    } catch {
-      this.logger.error(`STT_FAILED | lang=${languageCode}`);
-      throw new ServiceUnavailableException('Speech recognition failed.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`STT_FAILED | lang=${languageCode} | error=${msg}`);
+      throw new ServiceUnavailableException(`Speech recognition failed: ${msg}`);
     }
   }
 
@@ -254,9 +241,10 @@ export class VoiceService implements OnModuleDestroy {
         durationMs: Math.round((text.length / 10) * 1000),
         latencyMs: Date.now() - startTime,
       };
-    } catch {
-      this.logger.error(`TTS_FAILED | voice=${voice}`);
-      throw new ServiceUnavailableException('Speech synthesis failed.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`TTS_FAILED | voice=${voice} | error=${msg}`);
+      throw new ServiceUnavailableException(`Speech synthesis failed: ${msg}`);
     }
   }
 
@@ -290,9 +278,10 @@ export class VoiceService implements OnModuleDestroy {
     let sttResult: GnaniSttResult;
     try {
       sttResult = await this.gnaniProvider.speechToText(file.buffer, languageCode, file.mimetype);
-    } catch {
-      this.logger.error('CHAT_STT_FAILED');
-      throw new ServiceUnavailableException('Speech recognition failed.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`CHAT_STT_FAILED | error=${msg}`);
+      throw new ServiceUnavailableException(`Speech recognition failed: ${msg}`);
     }
     const sttLatencyMs = Date.now() - sttStart;
     const userText = sttResult.transcript?.trim();
@@ -471,38 +460,7 @@ export class VoiceService implements OnModuleDestroy {
       `total=${this.promptBuilder.estimateTokenCount(prompt)}`,
     );
 
-    // ─── Step 5: Call Gemini with Zod schema validation ───
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 500, topP: 0.9 },
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        this.logger.error(`Gemini API error: HTTP ${response.status}`);
-        return 'I encountered a technical issue. Please try again.';
-      }
-
-      const raw: unknown = await response.json();
-      const parsed = GeminiResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        this.logger.error('Gemini response validation failed');
-        return 'I could not generate a valid response.';
-      }
-
-      return parsed.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        'I could not generate an answer.';
-    } catch (error) {
-      this.logger.error(`Gemini API call failed: ${error instanceof Error ? error.message : ''}`);
-      return 'I encountered a technical issue. Please try again.';
-    }
+    // ─── Step 5: Call Gemini using official SDK (`GeminiService`) ───
+    return this.geminiService.generateChatReply(prompt, history);
   }
 }

@@ -12,7 +12,7 @@ export function setTokenProvider(fn: () => Promise<string | null>) {
   _getClerkTokenFn = fn;
 }
 
-async function getClerkToken(): Promise<string | null> {
+export async function getClerkToken(): Promise<string | null> {
   if (_getClerkTokenFn) return _getClerkTokenFn();
   return null;
 }

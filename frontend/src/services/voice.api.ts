@@ -1,3 +1,5 @@
+import { getClerkToken } from "@/lib/api-client";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 let _getClerkTokenFn: (() => Promise<string | null>) | null = null;
@@ -7,10 +9,83 @@ export function setVoiceTokenProvider(fn: () => Promise<string | null>) {
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const token = _getClerkTokenFn ? await _getClerkTokenFn() : null;
+  let token = _getClerkTokenFn ? await _getClerkTokenFn() : null;
+  if (!token) {
+    token = await getClerkToken();
+  }
   return {
     Authorization: `Bearer ${token || ""}`,
   };
+}
+
+async function ensureWavBlob(blob: Blob): Promise<Blob> {
+  if (blob.type === "audio/wav" || blob.type === "audio/wave") {
+    return blob;
+  }
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return blob;
+    const audioContext = new AudioCtx();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    const wavBuffer = audioBufferToWav(audioBuffer);
+    return new Blob([wavBuffer], { type: "audio/wav" });
+  } catch (error) {
+    console.warn("Could not convert audio blob to WAV in browser, sending original blob:", error);
+    return blob;
+  }
+}
+
+function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2 + 44;
+  const out = new ArrayBuffer(length);
+  const view = new DataView(out);
+  const channels: Float32Array[] = [];
+  let pos = 0;
+
+  function setUint32(data: number) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+
+  function setUint16(data: number) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  setUint32(0x46464952); // "RIFF"
+  setUint32(length - 8); // file length - 8
+  setUint32(0x45564157); // "WAVE"
+
+  setUint32(0x20746d66); // "fmt " chunk
+  setUint32(16); // length = 16
+  setUint16(1); // PCM (uncompressed)
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+  setUint16(numOfChan * 2); // block-align
+  setUint16(16); // 16-bit
+
+  setUint32(0x61746164); // "data" - chunk
+  setUint32(length - pos - 4); // chunk length
+
+  for (let i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  let offset = 0;
+  while (pos < length) {
+    for (let i = 0; i < numOfChan; i++) {
+      let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+      view.setInt16(pos, sample, true);
+      pos += 2;
+    }
+    offset++;
+  }
+
+  return out;
 }
 
 /**
@@ -20,8 +95,9 @@ export async function speechToText(
   audioBlob: Blob,
   languageCode: string = "en-IN",
 ): Promise<{ transcript: string; requestId: string; latencyMs: number }> {
+  const wavBlob = await ensureWavBlob(audioBlob);
   const formData = new FormData();
-  formData.append("audio_file", audioBlob, "recording.wav");
+  formData.append("audio_file", wavBlob, "recording.wav");
   formData.append("language_code", languageCode);
 
   const headers = await getAuthHeaders();
@@ -90,8 +166,9 @@ export async function voiceChat(
   conversationId: string;
   totalLatencyMs: number;
 }> {
+  const wavBlob = await ensureWavBlob(audioBlob);
   const formData = new FormData();
-  formData.append("audio_file", audioBlob, "question.wav");
+  formData.append("audio_file", wavBlob, "question.wav");
 
   const lang = options?.languageCode || "en-IN";
   const voice = options?.voice || "Pranav";

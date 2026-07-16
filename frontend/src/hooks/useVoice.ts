@@ -81,7 +81,6 @@ export function useVoice(options?: {
     audioContextRef.current = null;
     analyserRef.current = null;
     mediaRecorderRef.current = null;
-    audioChunksRef.current = [];
     setAudioLevel(0);
   }, []);
 
@@ -121,28 +120,35 @@ export function useVoice(options?: {
       analyserRef.current = analyser;
       updateAudioLevel();
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const supportedTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+      ];
+      const mimeType = supportedTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const actualMimeType = recorder.mimeType || mimeType || "audio/webm";
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        cleanupRecorder();
-
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const blob = new Blob(audioChunksRef.current, { type: actualMimeType });
         audioBlobRef.current = blob;
         setHasRecorded(true);
+        setIsRecording(false);
+        setStatus("recorded");
+
+        stream.getTracks().forEach((track) => track.stop());
+        cleanupRecorder();
       };
 
       mediaRecorderRef.current = recorder;
-      recorder.start();
+      recorder.start(250);
     } catch (err) {
       const message =
         err instanceof DOMException && err.name === "NotAllowedError"
@@ -151,6 +157,7 @@ export function useVoice(options?: {
       setError(message);
       setStatus("error");
       setIsRecording(false);
+      audioChunksRef.current = [];
       cleanupRecorder();
     }
   }, [cleanupRecorder, updateAudioLevel]);
@@ -158,9 +165,10 @@ export function useVoice(options?: {
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
+    } else {
+      setIsRecording(false);
+      setStatus("recorded");
     }
-    setIsRecording(false);
-    setStatus("recorded");
   }, []);
 
   const cancelRecording = useCallback(() => {

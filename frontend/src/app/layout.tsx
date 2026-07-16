@@ -25,6 +25,9 @@ export const metadata: Metadata = {
     description: "Your AI-Powered Personal Health Record Platform",
     type: "website",
   },
+  icons: {
+    icon: ["/favicon.ico", "/icon.svg"],
+  },
 };
 
 export default function RootLayout({

@@ -29,7 +29,7 @@ export class GeminiService {
 
     try {
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-pro',
+        model: 'gemini-3.5-flash',
         generationConfig: { responseMimeType: 'application/json' },
       });
 
@@ -53,14 +53,38 @@ export class GeminiService {
     }
   }
 
-  async generateTimeline(extractions: any[], clerkId?: string) {
+  async generateChatReply(prompt: string, _history?: Array<{ role: string; text: string }>): Promise<string> {
+    if (!this.genAI) {
+      return 'AI features are not configured. Please set GEMINI_API_KEY.';
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-3.5-flash',
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 500,
+          topP: 0.9,
+        },
+      });
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      return text || 'I could not generate an answer.';
+    } catch (error) {
+      this.logger.error('Gemini chat reply generation failed:', error);
+      return 'I encountered a technical issue while processing your question. Please try again.';
+    }
+  }
+
+  async generateTimeline(extractions: Record<string, unknown>[], clerkId?: string) {
     if (!this.genAI) {
       return { events: [], model: 'fallback' };
     }
 
     try {
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3.5-flash',
         generationConfig: { responseMimeType: 'application/json' },
       });
 
@@ -76,21 +100,21 @@ export class GeminiService {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const parsed = JSON.parse(text);
-      return { events: parsed.events || [], model: 'gemini-1.5-flash' };
+      return { events: parsed.events || [], model: 'gemini-3.5-flash' };
     } catch (error) {
       this.logger.error('Gemini timeline generation failed', error);
       return { events: [], model: 'fallback' };
     }
   }
 
-  async summarizePatientHistory(extractions: any[], type: 'PATIENT' | 'DOCTOR', clerkId?: string) {
+  async summarizePatientHistory(extractions: Record<string, unknown>[], type: 'PATIENT' | 'DOCTOR', clerkId?: string) {
     if (!this.genAI) {
       return { summary: "AI summary not available." };
     }
 
     try {
       const model = this.genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-pro',
+        model: 'gemini-3.5-flash',
         generationConfig: { responseMimeType: 'application/json' },
       });
 
@@ -114,7 +138,7 @@ export class GeminiService {
   async summarizeTimeline(
     events: Array<{ eventDate: Date; eventType: string; title: string; description?: string | null; severity?: string | null; facility?: string | null; doctorName?: string | null; diseases: string[]; medicines: string[] }>,
     periodLabel: string,
-    clerkId?: string,
+    _clerkId?: string,
   ) {
     if (!this.genAI) {
       return this.fallbackTimelineSummary(events, periodLabel);
@@ -122,7 +146,7 @@ export class GeminiService {
 
     try {
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3.5-flash',
         generationConfig: { responseMimeType: 'application/json' },
       });
 
@@ -198,7 +222,7 @@ Raw OCR Text:
 ${rawText}`;
   }
 
-  private buildTimelinePrompt(extractions: any[]): string {
+  private buildTimelinePrompt(extractions: Record<string, unknown>[]): string {
     return `You are a medical data analyst. Given extracted medical data from documents, create a chronological health timeline. Group related events. Each event MUST include the sourceDocumentId from the extraction it came from.
 Output a JSON array of events with this exact structure:
 {
@@ -224,7 +248,7 @@ Extractions:
 ${JSON.stringify(extractions)}`;
   }
 
-  private buildSummaryPrompt(extractions: any[], type: 'PATIENT' | 'DOCTOR'): string {
+  private buildSummaryPrompt(extractions: Record<string, unknown>[], type: 'PATIENT' | 'DOCTOR'): string {
     const roleInstruction = type === 'DOCTOR' 
       ? 'You are writing a concise clinical summary for a physician. Use standard medical terminology and ICD/CPT concepts where applicable.'
       : 'You are writing a friendly, easy-to-understand health summary for the patient. Avoid complex jargon and explain things simply.';

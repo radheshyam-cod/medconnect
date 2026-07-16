@@ -129,7 +129,7 @@ export class GnaniApiProvider implements GnaniProvider {
           );
         } else {
           this.logger.warn(
-            `Gnani STT attempt ${attempt}/${this.config.retryCount} failed`,
+            `Gnani STT attempt ${attempt}/${this.config.retryCount} failed: ${lastError?.message || error}`,
           );
         }
 
@@ -221,6 +221,10 @@ export class GnaniApiProvider implements GnaniProvider {
         if (error instanceof DOMException && error.name === 'AbortError') {
           this.logger.warn(
             `Gnani TTS attempt ${attempt}/${this.config.retryCount} timed out after ${this.config.timeout}ms`,
+          );
+        } else {
+          this.logger.warn(
+            `Gnani TTS attempt ${attempt}/${this.config.retryCount} failed: ${lastError?.message || error}`,
           );
         }
 
