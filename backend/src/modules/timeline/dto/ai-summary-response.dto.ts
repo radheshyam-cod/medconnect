@@ -1,11 +1,13 @@
+export class AITimelineKeyEventDto {
+  date: string;
+  title: string;
+  type: string;
+  significance: string;
+}
+
 export class AITimelineSummaryDto {
   summary: string;
-  keyEvents: Array<{
-    date: string;
-    title: string;
-    type: string;
-    significance: string;
-  }>;
+  keyEvents: AITimelineKeyEventDto[];
   trends: string[];
   recommendations: string[];
   totalEventsInPeriod: number;

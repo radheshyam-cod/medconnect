@@ -8,6 +8,7 @@ import {
 import { Reflector } from "@nestjs/core";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 import { ClerkStrategy } from "../../modules/auth/strategies/clerk.strategy";
+import { PrismaService } from "../../modules/database/prisma.service";
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
@@ -16,6 +17,7 @@ export class ClerkAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly clerkStrategy: ClerkStrategy,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,6 +50,21 @@ export class ClerkAuthGuard implements CanActivate {
     try {
       // Verify the Clerk JWT via JWKS (fetched from Clerk's API)
       const clerkUser = await this.clerkStrategy.verify(token);
+
+      // Auto-upsert user to database if they don't exist yet (for local development ease)
+      try {
+        await this.prisma.user.upsert({
+          where: { clerkId: clerkUser.sub },
+          update: {},
+          create: {
+            clerkId: clerkUser.sub,
+            email: "devuser@example.com", 
+            fullName: "Development User",
+          },
+        });
+      } catch (err) {
+        this.logger.error("Failed to auto-upsert user", err);
+      }
 
       // Attach verified user to request for downstream use
       request.user = {

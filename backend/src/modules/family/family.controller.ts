@@ -3,12 +3,21 @@ import { FamilyService } from './family.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FamilyRelationType } from '@prisma/client';
 
+import { IsString, IsNotEmpty, IsEmail, IsEnum } from 'class-validator';
+
 export class CreateGroupDto {
+  @IsString()
+  @IsNotEmpty()
   name: string;
 }
 
 export class InviteMemberDto {
+  @IsEmail()
+  @IsNotEmpty()
   email: string;
+
+  @IsEnum(FamilyRelationType)
+  @IsNotEmpty()
   relation: FamilyRelationType;
 }
 
