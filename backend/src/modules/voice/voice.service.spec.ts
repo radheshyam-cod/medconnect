@@ -1,3 +1,4 @@
+import { Readable } from 'stream';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { VoiceService } from './voice.service';
@@ -6,13 +7,33 @@ import { PrismaService } from '../database/prisma.service';
 import { MemoryService } from '../memory/memory.service';
 import { ContextBuilder } from '../ai-context/context-builder.service';
 import { PromptBuilder } from '../ai-context/prompt-builder.service';
-import { TimelineService } from '../timeline/timeline.service';
+import { GeminiService } from '../ai/gemini.service';
+
+interface MockGnaniProvider {
+  isAvailable: boolean;
+  speechToText: jest.Mock;
+  textToSpeech: jest.Mock;
+}
+
+interface MockPrismaService {
+  user: { findUnique: jest.Mock };
+  medication: { findMany: jest.Mock };
+  labResult: { findMany: jest.Mock };
+  timeline: { findMany: jest.Mock };
+  document: { findMany: jest.Mock };
+  patientProfile: { findUnique: jest.Mock };
+}
+
+interface MockMemoryService {
+  searchRelevantMemories: jest.Mock;
+  storeMemory: jest.Mock;
+}
 
 describe('VoiceService', () => {
   let service: VoiceService;
-  let gnaniProvider: any;
-  let prisma: any;
-  let memoryService: any;
+  let gnaniProvider: MockGnaniProvider;
+  let prisma: MockPrismaService;
+  let memoryService: MockMemoryService;
 
   const mockFile = (overrides?: Partial<Express.Multer.File>): Express.Multer.File => ({
     fieldname: 'audio_file',
@@ -21,7 +42,7 @@ describe('VoiceService', () => {
     mimetype: 'audio/wav',
     buffer: Buffer.from('fake-audio-data'),
     size: 1024,
-    stream: null as any,
+    stream: null as unknown as Readable,
     destination: '',
     filename: '',
     path: '',
@@ -76,14 +97,8 @@ describe('VoiceService', () => {
       estimateTokenCount: jest.fn().mockReturnValue(100),
     };
 
-    const timelineService = {
-      findAll: jest.fn(),
-      findOne: jest.fn(),
-      create: jest.fn(),
-      remove: jest.fn(),
-      getSummary: jest.fn(),
-      getAISummary: jest.fn(),
-      generateFromExtractions: jest.fn(),
+    const geminiService = {
+      generateChatReply: jest.fn().mockResolvedValue('Mock AI answer to your question.'),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -94,8 +109,8 @@ describe('VoiceService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string, defaultValue?: any) => {
-              const config: Record<string, any> = {
+            get: jest.fn((key: string, defaultValue?: unknown) => {
+              const config: Record<string, unknown> = {
                 GNANI_MAX_AUDIO_SIZE_MB: 10,
                 GEMINI_API_KEY: '',
               };
@@ -106,7 +121,7 @@ describe('VoiceService', () => {
         { provide: MemoryService, useValue: memoryService },
         { provide: ContextBuilder, useValue: contextBuilder },
         { provide: PromptBuilder, useValue: promptBuilder },
-        { provide: TimelineService, useValue: timelineService },
+        { provide: GeminiService, useValue: geminiService },
       ],
     }).compile();
 

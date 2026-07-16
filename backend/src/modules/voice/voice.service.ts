@@ -158,7 +158,10 @@ export class VoiceService implements OnModuleDestroy {
   ): { conversation: Conversation; id: string } {
     if (convId) {
       const existing = this.conversations.get(convId);
-      if (existing && existing.userId === userId) {
+      if (existing) {
+        if (existing.userId !== userId) {
+          throw new NotFoundException('Conversation not found or access denied');
+        }
         existing.lastAccessedAt = Date.now();
         return { conversation: existing, id: convId };
       }
