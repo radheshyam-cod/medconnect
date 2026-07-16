@@ -118,7 +118,21 @@ export class DocumentsService {
     queryParams: QueryDocumentDto,
   ): Promise<{ documents: DocumentResponseDto[]; total: number }> {
     const userId = await this.getInternalUserId(clerkId);
-    const where: Prisma.DocumentWhereInput = { userId };
+
+    // Get family groups where user is an accepted member
+    const acceptedGroups = await this.prisma.familyGroupMember.findMany({
+      where: {
+        memberId: userId,
+        status: 'ACCEPTED'
+      },
+      include: { group: true }
+    });
+
+    const allowedUserIds = [userId, ...acceptedGroups.map(g => g.group.ownerId)];
+
+    const where: Prisma.DocumentWhereInput = { 
+      userId: { in: allowedUserIds } 
+    };
 
     if (queryParams.documentType) {
       where.documentType = queryParams.documentType;
@@ -174,8 +188,15 @@ export class DocumentsService {
 
   async findOne(clerkId: string, id: string): Promise<DocumentDetailResponseDto> {
     const userId = await this.getInternalUserId(clerkId);
+
+    const acceptedGroups = await this.prisma.familyGroupMember.findMany({
+      where: { memberId: userId, status: 'ACCEPTED' },
+      include: { group: true }
+    });
+    const allowedUserIds = [userId, ...acceptedGroups.map(g => g.group.ownerId)];
+
     const document = await this.prisma.document.findFirst({
-      where: { id, userId },
+      where: { id, userId: { in: allowedUserIds } },
       include: {
         extractions: {
           take: 1,
@@ -246,8 +267,15 @@ export class DocumentsService {
 
   async getDownloadUrl(clerkId: string, id: string): Promise<string | null> {
     const userId = await this.getInternalUserId(clerkId);
+
+    const acceptedGroups = await this.prisma.familyGroupMember.findMany({
+      where: { memberId: userId, status: 'ACCEPTED' },
+      include: { group: true }
+    });
+    const allowedUserIds = [userId, ...acceptedGroups.map(g => g.group.ownerId)];
+
     const document = await this.prisma.document.findFirst({
-      where: { id, userId },
+      where: { id, userId: { in: allowedUserIds } },
     });
 
     if (!document) {
