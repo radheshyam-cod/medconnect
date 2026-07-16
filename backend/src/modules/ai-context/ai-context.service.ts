@@ -54,7 +54,7 @@ export class AIContextService {
    */
   async buildTimelineContext(
     userId: string,
-    extractions: any[],
+    extractions: Record<string, unknown>[],
   ): Promise<{ enrichedPrompt: string; hasMemory: boolean }> {
     const [patientContext, memoryContext] = await Promise.all([
       this.getPatientContext(userId),
@@ -82,7 +82,7 @@ export class AIContextService {
    */
   async buildSummaryContext(
     userId: string,
-    extractions: any[],
+    extractions: Record<string, unknown>[],
     type: 'PATIENT' | 'DOCTOR',
   ): Promise<{ enrichedPrompt: string; hasMemory: boolean }> {
     const [patientContext, memoryContext] = await Promise.all([
@@ -112,7 +112,7 @@ export class AIContextService {
    */
   async storeExtractionMemory(
     userId: string,
-    extractedData: Record<string, any>,
+    extractedData: Record<string, unknown>,
   ): Promise<void> {
     await this.memoryService.storeMemory(userId, extractedData, 'ai_extraction');
   }

@@ -11,8 +11,8 @@ import { MemorySynchronizer } from '../memory/memory-synchronizer.service';
 describe('DocumentsService', () => {
   let service: DocumentsService;
   let prisma: PrismaService;
-  let storage: any;
-  let ocrQueue: any;
+  let storage: Record<string, jest.Mock>;
+  let ocrQueue: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,6 +29,9 @@ describe('DocumentsService', () => {
               findFirst: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+            },
+            familyGroupMember: {
+              findMany: jest.fn().mockResolvedValue([]),
             },
           },
         },
@@ -86,7 +89,7 @@ describe('DocumentsService', () => {
     });
 
     it('should throw BadRequestException if file type is unsupported', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
       
       const file = {
         mimetype: 'application/xml', // invalid
@@ -98,7 +101,7 @@ describe('DocumentsService', () => {
     });
 
     it('should successfully upload and enqueue document', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
       storage.uploadFile.mockResolvedValue({ path: 'user_123/uuid.pdf', publicUrl: 'http://example.com' });
       jest.spyOn(prisma.document, 'create').mockResolvedValue({
         id: 'doc_123',
@@ -108,7 +111,7 @@ describe('DocumentsService', () => {
         status: ProcessingStatus.PENDING,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any);
+      } as never);
 
       const file = {
         mimetype: 'application/pdf',
@@ -129,19 +132,19 @@ describe('DocumentsService', () => {
 
   describe('findOne', () => {
     it('should return document details if found', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
       jest.spyOn(prisma.document, 'findFirst').mockResolvedValue({
         id: 'doc_123',
         userId: 'user_123',
         extractions: [],
-      } as any);
+      } as never);
 
       const result = await service.findOne('clerk_123', 'doc_123');
       expect(result.id).toEqual('doc_123');
     });
 
     it('should throw NotFoundException if document not found', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
       jest.spyOn(prisma.document, 'findFirst').mockResolvedValue(null);
 
       await expect(service.findOne('clerk_123', 'doc_123')).rejects.toThrow(NotFoundException);

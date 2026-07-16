@@ -8,10 +8,10 @@ import { MemoryLogger } from '../memory/memory-logger.service';
 
 describe('AIContextService', () => {
   let service: AIContextService;
-  let contextBuilder: any;
-  let promptBuilder: any;
-  let memoryService: any;
-  let cache: any;
+  let contextBuilder: Record<string, jest.Mock>;
+  let promptBuilder: Record<string, jest.Mock>;
+  let memoryService: Record<string, jest.Mock>;
+  let cache: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     contextBuilder = {

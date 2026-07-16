@@ -21,7 +21,7 @@ export class ApiResponse<T> {
     statusCode: number;
     timestamp: string;
     path: string;
-    errors?: any;
+    errors?: unknown;
   };
 
   static success<T>(data: T, meta?: ApiResponse<T>["meta"]): ApiResponse<T> {

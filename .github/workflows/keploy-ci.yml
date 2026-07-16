@@ -149,6 +149,7 @@ jobs:
           name: jest-coverage
           path: backend/coverage/
           retention-days: 14
+          if-no-files-found: ignore
 
   # ─── Keploy Regression Tests (Replay) ───
   keploy-regression:
@@ -221,6 +222,7 @@ jobs:
             .keploy/
             keploy/
           retention-days: 14
+          if-no-files-found: ignore
 
       - name: Report regression status
         if: failure() && steps.check-tests.outputs.has_tests == 'true'
