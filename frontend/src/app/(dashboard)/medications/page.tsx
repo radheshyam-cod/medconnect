@@ -1,112 +1,142 @@
+import Link from "next/link";
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { api } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Pill, CheckCircle2, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Button } from "@/components/ui/button";
+import {
+  Pill,
+  Loader2,
+  AlertCircle,
+  Plus,
+  Calendar,
+  Clock,
+  Sparkles,
+} from "lucide-react";
+import { MedicationCard } from "@/components/premium/medication-card";
+import { PageSkeleton } from "@/components/premium/page-skeleton";
+import { cn } from "@/lib/utils";
+
+const FILTERS = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Past" },
+  { value: "ALL", label: "All" },
+] as const;
 
 export default function MedicationsPage() {
-  const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
+  const [filter, setFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
   
-  const { data: medications, isLoading } = useQuery({
+  const { data: medications, isLoading, isError } = useQuery({
     queryKey: ["medications", filter],
-    queryFn: () => api.medications.list({ isActive: filter === 'ALL' ? undefined : filter === 'ACTIVE' }),
+    queryFn: () => api.medications.list({ isActive: filter === "ALL" ? undefined : filter === "ACTIVE" }),
   });
 
+  const activeMeds = useMemo(() => 
+    medications?.filter(m => m.isActive) ?? [], 
+    [medications]
+  );
+  
+  const pastMeds = useMemo(() => 
+    medications?.filter(m => !m.isActive) ?? [], 
+    [medications]
+  );
+
+  const displayMeds = filter === "ACTIVE" 
+    ? activeMeds 
+    : filter === "INACTIVE" 
+      ? pastMeds 
+      : medications ?? [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto pb-10">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Medications</h1>
-          <p className="text-muted-foreground">Manage your current and past prescriptions</p>
+          <p className="text-muted-foreground text-sm">Manage your current and past prescriptions</p>
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <Badge
-          variant={filter === 'ACTIVE' ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => setFilter('ACTIVE')}
-        >
-          Active
-        </Badge>
-        <Badge
-          variant={filter === 'INACTIVE' ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => setFilter('INACTIVE')}
-        >
-          Past
-        </Badge>
-        <Badge
-          variant={filter === 'ALL' ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => setFilter('ALL')}
-        >
-          All
-        </Badge>
+      {/* Stats */}
+      {!isLoading && medications && medications.length > 0 && (
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{medications.length} total</span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            {activeMeds.length} active
+          </span>
+          {pastMeds.length > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+              {pastMeds.length} past
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Filter pills */}
+      <div className="flex gap-2">
+        {FILTERS.map((f) => (
+          <Badge
+            key={f.value}
+            variant={filter === f.value ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setFilter(f.value)}
+          >
+            {f.label}
+            {f.value === "ACTIVE" && activeMeds.length > 0 && (
+              <span className="ml-1.5 text-[10px] opacity-70">({activeMeds.length})</span>
+            )}
+          </Badge>
+        ))}
       </div>
 
+      {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <PageSkeleton type="list" />
+      ) : isError ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+            <p className="font-semibold">Failed to load medications</p>
+          </CardContent>
+        </Card>
       ) : !medications || medications.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Pill className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium">No medications found</h3>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/10 to-emerald-500/5">
+              <Pill className="h-8 w-8 text-emerald-500/60" />
+            </div>
+            <h3 className="text-lg font-semibold">No Medications Found</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              We couldn't find any medications matching your filter. Upload prescriptions to add them automatically via AI.
+              We couldn&apos;t find any medications matching your filter. Upload prescriptions to add them automatically via AI.
             </p>
+            <div className="flex gap-2 mt-4">
+              <Badge variant="outline">Upload Prescription</Badge>
+              <Badge variant="outline">Add Manually</Badge>
+            </div>
+            <Button variant="outline" className="mt-6" asChild>
+              <Link href="/documents">Upload Prescription</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {medications.map((med: any) => (
-            <Card key={med.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-0">
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{med.name}</h3>
-                    {med.isActive ? (
-                      <Badge variant="default" className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 border-emerald-200">Active</Badge>
-                    ) : (
-                      <Badge variant="secondary">Past</Badge>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2 mt-4 text-sm">
-                    {med.dosage && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Dosage</span>
-                        <span className="font-medium">{med.dosage}</span>
-                      </div>
-                    )}
-                    {med.frequency && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Frequency</span>
-                        <span className="font-medium">{med.frequency}</span>
-                      </div>
-                    )}
-                    {med.prescribedBy && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Prescribed By</span>
-                        <span className="font-medium">Dr. {med.prescribedBy}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="bg-muted/30 px-4 py-3 text-xs border-t text-muted-foreground">
-                  Added {formatDistanceToNow(new Date(med.createdAt), { addSuffix: true })}
-                </div>
-              </CardContent>
-            </Card>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {displayMeds.map((med) => (
+            <MedicationCard key={med.id} medication={med} />
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
 }
+
+

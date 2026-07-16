@@ -1,0 +1,27 @@
+🐰 Keploy: 2026-07-15T18:41:47.961097+05:30 	[34mINFO[0m	Starting Keploy	{"version": "3.5.88", "apiServerURL": "https://api.keploy.io", "inDocker": false}
+🐰 Keploy: 2026-07-15T18:41:49.85101+05:30 	[31mERROR[0m	failed to validate oss flags; review the provided command flags and configuration, then retry	{"error": "non docker command not supported for OS: darwin , Arch: arm64"}
+🐰 Keploy: 2026-07-15T18:41:49.851165+05:30 	[31mERROR[0m	failed to validate flags	{"error": "non docker command not supported for OS: darwin , Arch: arm64"}
+🐰 Keploy: 2026-07-15T18:53:22.801906+05:30 	[34mINFO[0m	Starting Keploy	{"version": "3.5.88", "apiServerURL": "https://api.keploy.io", "inDocker": false}
+🐰 Keploy: 2026-07-15T18:53:24.933538+05:30 	[34mINFO[0m	Running application using a temporary Keploy-generated Docker Compose file (will be cleaned up automatically)	{"cmd": "docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api", "composePath": "docker-compose-tmp.yaml"}
+🐰 Keploy: 2026-07-15T18:53:24.933828+05:30 	[34mINFO[0m	Waiting for keploy-agent to be ready for docker compose...	{"Agent-uri": "http://localhost:62926/agent"}
+🐰 Keploy: 2026-07-15T18:53:25.234802+05:30 	[34mINFO[0m	Starting Application :	{"executing_cmd": "/bin/sh -c docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api"}
+🐰 Keploy: 2026-07-15T18:53:26.948215+05:30 	[34mINFO[0m	Keploy agent is ready to record test cases and mocks.
+🐰 Keploy: 2026-07-15T18:55:22.3407+05:30 	[34mINFO[0m	Stopping Keploy recording...
+🐰 Keploy: 2026-07-15T18:59:59.41367+05:30 	[34mINFO[0m	Starting Keploy	{"version": "3.5.88", "apiServerURL": "https://api.keploy.io", "inDocker": false}
+🐰 Keploy: 2026-07-15T19:00:01.519877+05:30 	[34mINFO[0m	Running application using a temporary Keploy-generated Docker Compose file (will be cleaned up automatically)	{"cmd": "docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api", "composePath": "docker-compose-tmp.yaml"}
+🐰 Keploy: 2026-07-15T19:00:01.520088+05:30 	[34mINFO[0m	Waiting for keploy-agent to be ready for docker compose...	{"Agent-uri": "http://localhost:63155/agent"}
+🐰 Keploy: 2026-07-15T19:00:01.77572+05:30 	[34mINFO[0m	Starting Application :	{"executing_cmd": "/bin/sh -c docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api"}
+🐰 Keploy: 2026-07-15T19:00:02.532778+05:30 	[34mINFO[0m	Keploy agent is ready to record test cases and mocks.
+🐰 Keploy: 2026-07-15T19:01:59.020772+05:30 	[34mINFO[0m	Stopping Keploy recording...
+🐰 Keploy: 2026-07-15T19:07:55.155666+05:30 	[34mINFO[0m	Starting Keploy	{"version": "3.5.88", "apiServerURL": "https://api.keploy.io", "inDocker": false}
+🐰 Keploy: 2026-07-15T19:07:56.961204+05:30 	[34mINFO[0m	Running application using a temporary Keploy-generated Docker Compose file (will be cleaned up automatically)	{"cmd": "docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api", "composePath": "docker-compose-tmp.yaml"}
+🐰 Keploy: 2026-07-15T19:07:56.961345+05:30 	[34mINFO[0m	Waiting for keploy-agent to be ready for docker compose...	{"Agent-uri": "http://localhost:63438/agent"}
+🐰 Keploy: 2026-07-15T19:07:57.180727+05:30 	[34mINFO[0m	Starting Application :	{"executing_cmd": "/bin/sh -c docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api"}
+🐰 Keploy: 2026-07-15T19:07:58.978297+05:30 	[34mINFO[0m	Keploy agent is ready to record test cases and mocks.
+🐰 Keploy: 2026-07-15T19:09:42.814269+05:30 	[34mINFO[0m	Stopping Keploy recording...
+🐰 Keploy: 2026-07-15T20:45:12.612866+05:30 	[34mINFO[0m	Starting Keploy	{"version": "3.5.88", "apiServerURL": "https://api.keploy.io", "inDocker": false}
+🐰 Keploy: 2026-07-15T20:45:17.925602+05:30 	[34mINFO[0m	Running application using a temporary Keploy-generated Docker Compose file (will be cleaned up automatically)	{"cmd": "docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api", "composePath": "docker-compose-tmp.yaml"}
+🐰 Keploy: 2026-07-15T20:45:17.925943+05:30 	[34mINFO[0m	Waiting for keploy-agent to be ready for docker compose...	{"Agent-uri": "http://localhost:64707/agent"}
+🐰 Keploy: 2026-07-15T20:45:18.057494+05:30 	[34mINFO[0m	Starting Application :	{"executing_cmd": "/bin/sh -c docker compose -f ./docker-compose-tmp.yaml up --abort-on-container-exit --exit-code-from api api"}
+🐰 Keploy: 2026-07-15T20:45:19.946047+05:30 	[34mINFO[0m	Keploy agent is ready to record test cases and mocks.
+🐰 Keploy: 2026-07-15T20:47:12.01568+05:30 	[34mINFO[0m	Stopping Keploy recording...

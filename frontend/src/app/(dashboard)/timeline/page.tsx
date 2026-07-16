@@ -1,204 +1,270 @@
+import Link from "next/link";
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Plus, Stethoscope, Pill, FlaskConical, Syringe, AlertTriangle, Activity, Calendar, Hospital, Microscope } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import { api } from "@/lib/api-client";
-
-const eventTypeIcons: Record<string, { icon: any; color: string; bg: string }> = {
-  VISIT: { icon: Hospital, color: "text-blue-600", bg: "bg-blue-100" },
-  DIAGNOSIS: { icon: Stethoscope, color: "text-red-600", bg: "bg-red-100" },
-  MEDICATION: { icon: Pill, color: "text-purple-600", bg: "bg-purple-100" },
-  LAB_TEST: { icon: FlaskConical, color: "text-emerald-600", bg: "bg-emerald-100" },
-  PROCEDURE: { icon: Microscope, color: "text-orange-600", bg: "bg-orange-100" },
-  IMAGING: { icon: Activity, color: "text-cyan-600", bg: "bg-cyan-100" },
-  VACCINATION: { icon: Syringe, color: "text-green-600", bg: "bg-green-100" },
-  ALLERGY: { icon: AlertTriangle, color: "text-yellow-600", bg: "bg-yellow-100" },
-  HOSPITALIZATION: { icon: Hospital, color: "text-rose-600", bg: "bg-rose-100" },
-  SURGERY: { icon: Microscope, color: "text-red-700", bg: "bg-red-200" },
-  OTHER: { icon: Calendar, color: "text-gray-600", bg: "bg-gray-100" },
-};
+import {
+  Loader2,
+  Calendar,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  AlertCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { TimelineCard } from "@/components/premium/timeline-card";
+import { PageSkeleton } from "@/components/premium/page-skeleton";
 
 const EVENT_TYPES = [
-  "ALL", "VISIT", "DIAGNOSIS", "MEDICATION", "LAB_TEST",
-  "PROCEDURE", "IMAGING", "VACCINATION", "ALLERGY", "HOSPITALIZATION", "SURGERY",
+  { value: "", label: "All Events", color: "bg-primary" },
+  { value: "VISIT", label: "Visits", color: "bg-blue-500" },
+  { value: "DIAGNOSIS", label: "Diagnoses", color: "bg-red-500" },
+  { value: "MEDICATION", label: "Medications", color: "bg-purple-500" },
+  { value: "LAB_TEST", label: "Lab Tests", color: "bg-emerald-500" },
+  { value: "PROCEDURE", label: "Procedures", color: "bg-orange-500" },
+  { value: "IMAGING", label: "Imaging", color: "bg-cyan-500" },
+  { value: "VACCINATION", label: "Vaccinations", color: "bg-green-500" },
+  { value: "ALLERGY", label: "Allergies", color: "bg-yellow-500" },
+  { value: "HOSPITALIZATION", label: "Hospitalizations", color: "bg-rose-500" },
+  { value: "SURGERY", label: "Surgeries", color: "bg-red-700" },
 ] as const;
 
-const typeLabels: Record<string, string> = {
-  ALL: "All Events",
-  VISIT: "Visits",
-  DIAGNOSIS: "Diagnoses",
-  MEDICATION: "Medications",
-  LAB_TEST: "Lab Tests",
-  PROCEDURE: "Procedures",
-  IMAGING: "Imaging",
-  VACCINATION: "Vaccinations",
-  ALLERGY: "Allergies",
-  HOSPITALIZATION: "Hospitalizations",
-  SURGERY: "Surgeries",
-};
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+] as const;
 
 export default function TimelinePage() {
-  const [eventFilter, setEventFilter] = useState<string>("ALL");
+  const [eventFilter, setEventFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
-  const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["timeline", { eventType: eventFilter !== "ALL" ? eventFilter : undefined, page }],
-    queryFn: () => api.timeline.list({
-      eventType: eventFilter !== "ALL" ? eventFilter : undefined,
-      page,
-      limit: 20,
-    }),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["timeline", { eventType: eventFilter || undefined, page, limit: 20 }],
+    queryFn: () => api.timeline.list({ eventType: eventFilter || undefined, page, limit: 20 }),
   });
 
-  const { data: summary } = useQuery({
+  const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["timeline-summary"],
     queryFn: () => api.timeline.getSummary(),
   });
 
-  const events = (data as any)?.events || (Array.isArray(data) ? data : []);
-  const total = (data as any)?.total || events.length;
+  const events = data?.events ?? [];
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20);
 
+  // Sort events
+  const sortedEvents = [...events].sort((a, b) => {
+    const dateA = new Date(a.eventDate).getTime();
+    const dateB = new Date(b.eventDate).getTime();
+    return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+  });
+
+  // Group events by year
+  const groupedByYear = sortedEvents.reduce((acc, event) => {
+    const year = new Date(event.eventDate).getFullYear().toString();
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(event);
+    return acc;
+  }, {} as Record<string, typeof events>);
+
+  const sortedYears = Object.keys(groupedByYear).sort((a, b) =>
+    sortOrder === "newest" ? parseInt(b) - parseInt(a) : parseInt(a) - parseInt(b)
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Health Timeline</h1>
-          <p className="text-muted-foreground">
-            Your complete medical journey in chronological order
-          </p>
-        </div>
+    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Health Timeline</h1>
+        <p className="text-muted-foreground text-sm">
+          Your complete medical journey in chronological order
+        </p>
       </div>
 
       {/* Summary Cards */}
-      {summary && (
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+      {summary && !summaryLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
           {Object.entries(summary.byType).slice(0, 12).map(([type, count]) => {
-            const config = eventTypeIcons[type] || eventTypeIcons.OTHER;
-            const Icon = config.icon;
+            const config = EVENT_TYPES.find(t => t.value === type);
             return (
-              <Card key={type} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setEventFilter(type)}>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-full ${config.bg}`}>
-                    <Icon className={`h-4 w-4 ${config.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{count as number}</p>
-                    <p className="text-xs text-muted-foreground">{typeLabels[type] || type}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <button
+                key={type}
+                onClick={() => { setEventFilter(type); setPage(1); }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border p-3 transition-all hover:shadow-md text-left",
+                  eventFilter === type ? "border-primary bg-primary/5" : "hover:border-primary/20"
+                )}
+              >
+                <div className={cn("h-2 w-2 rounded-full shrink-0", config?.color || "bg-muted")} />
+                <div className="min-w-0">
+                  <p className="text-lg font-bold tabular-nums leading-none">{count as number}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{config?.label || type}</p>
+                </div>
+              </button>
             );
           })}
         </div>
       )}
 
-      {/* Filter Chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {EVENT_TYPES.map((type) => (
-          <Badge
-            key={type}
-            variant={eventFilter === type ? "default" : "outline"}
-            className="cursor-pointer whitespace-nowrap"
-            onClick={() => { setEventFilter(type); setPage(1); }}
+      {/* Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {EVENT_TYPES.map((type) => (
+            <Badge
+              key={type.value}
+              variant={eventFilter === type.value ? "default" : "outline"}
+              className={cn("cursor-pointer whitespace-nowrap transition-all", 
+                eventFilter === type.value ? "" : "hover:border-primary/30"
+              )}
+              onClick={() => { setEventFilter(type.value); setPage(1); }}
+            >
+              {type.label}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
           >
-            {typeLabels[type]}
-          </Badge>
-        ))}
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Timeline Events */}
+      {/* Timeline */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : events.length === 0 ? (
+        <PageSkeleton type="timeline" />
+      ) : isError ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="text-lg font-medium">No timeline events yet</p>
-            <p className="text-sm text-muted-foreground">
-              Upload and process documents to build your health timeline
+            <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+            <p className="font-semibold">Failed to load timeline</p>
+            <p className="text-sm text-muted-foreground mt-1">Please try again later</p>
+          </CardContent>
+        </Card>
+      ) : sortedEvents.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-primary/5">
+              <Calendar className="h-8 w-8 text-primary/60" />
+            </div>
+            <h3 className="text-lg font-semibold">No Timeline Events Yet</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              Upload and process documents to build your health timeline. Your medical history will appear here chronologically.
             </p>
+            <div className="flex gap-2 mt-4">
+              <Badge variant="outline">Upload Prescription</Badge>
+              <Badge variant="outline">Add Lab Report</Badge>
+              <Badge variant="outline">Enter Manual Event</Badge>
+            </div>
+            <Button variant="outline" className="mt-6" asChild>
+              <Link href="/documents">Go to Documents</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="relative">
-          {/* Timeline line */}
-          <div className="absolute left-[23px] top-0 bottom-0 w-0.5 bg-border hidden md:block" />
-
-          <div className="space-y-4">
-            {events.map((event: any, index: number) => {
-              const config = eventTypeIcons[event.eventType] || eventTypeIcons.OTHER;
-              const Icon = config.icon;
-
-              return (
-                <div key={event.id} className="relative flex gap-4 md:gap-6">
-                  {/* Timeline dot */}
-                  <div className={`relative z-10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ${config.bg} border-2 border-background`}>
-                    <Icon className={`h-5 w-5 ${config.color}`} />
-                  </div>
-
-                  {/* Content */}
-                  <Card className="flex-1 hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {typeLabels[event.eventType] || event.eventType}
-                            </Badge>
-                            {event.severity && (
-                              <Badge variant={
-                                event.severity === "CRITICAL" ? "destructive" :
-                                event.severity === "SEVERE" ? "destructive" :
-                                event.severity === "MODERATE" ? "warning" : "secondary"
-                              } className="text-xs">
-                                {event.severity}
-                              </Badge>
-                            )}
-                          </div>
-                          <h3 className="font-semibold">{event.title}</h3>
-                          {event.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {event.description}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
-                            <span>{formatDate(event.eventDate)}</span>
-                            {event.facility && <span>📍 {event.facility}</span>}
-                            {event.doctorName && <span>👨‍⚕️ {event.doctorName}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+        <div className="space-y-8">
+          {/* Grouped by Year */}
+          {sortedYears.map((year) => (
+            <div key={year}>
+              {/* Year header */}
+              <div className="flex items-center gap-3 mb-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10 pb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                  <Calendar className="h-4 w-4 text-primary" />
                 </div>
-              );
-            })}
-          </div>
+                <h2 className="text-lg font-bold tracking-tight">{year}</h2>
+                <div className="flex-1 h-px bg-gradient-to-r from-border to-transparent" />
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {groupedByYear[year].length} event{groupedByYear[year].length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {/* Events for this year */}
+              <div className="space-y-4 pl-2">
+                {groupedByYear[year].map((event, index) => (
+                  <TimelineCard
+                    key={event.id}
+                    event={event}
+                    isLast={index === groupedByYear[year].length - 1}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={cn(
+                    "h-8 w-8 rounded-lg text-xs font-medium transition-colors",
+                    page === pageNum
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
             Next
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       )}
+
+      {/* AI Summary Link */}
+      <div className="flex justify-center pt-4">
+        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" asChild>
+          <Link href="/dashboard">
+            <Sparkles className="h-3.5 w-3.5" />
+            View AI Summary on Dashboard
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

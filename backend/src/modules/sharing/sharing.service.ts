@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -29,20 +29,25 @@ export class SharingService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
-    return this.prisma.shareLink.create({
-      data: {
-        userId,
-        title,
-        expiresAt,
-        sharedResources: {
-          create: resources.map(r => ({
-            resourceType: r.resourceType,
-            resourceId: r.resourceId
-          }))
-        }
-      },
-      include: { sharedResources: true }
-    });
+    try {
+      return await this.prisma.shareLink.create({
+        data: {
+          userId,
+          title,
+          expiresAt,
+          sharedResources: {
+            create: resources.map(r => ({
+              resourceType: r.resourceType,
+              resourceId: r.resourceId
+            }))
+          }
+        },
+        include: { sharedResources: true }
+      });
+    } catch (error) {
+      this.logger.error(`Failed to create share link: ${error.message}`, error.stack);
+      throw new BadRequestException('Failed to create share link. Please ensure the resources are valid.');
+    }
   }
 
   async revokeLink(clerkId: string, id: string) {

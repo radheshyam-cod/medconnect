@@ -76,7 +76,7 @@ services:
         network_mode: service:keploy-agent
     keploy-agent:
         image: docker.io/keploy/enterprise:v3.5.88
-        container_name: keploy-v3-9216
+        container_name: keploy-v3-5299
         # Capabilities required by keploy-agent for eBPF interception.
         # Review and allow only what your security policy permits.
         cap_add:
@@ -91,7 +91,7 @@ services:
             - CERT_EXPORT_PATH=/tmp/keploy-tls
             - KEPLOY_DEBUG_FILE=/keploy-host/agent-debug.log
         ports:
-            - "59139:59139"
+            - "64707:64707"
             - "16789:16789"
             - "3001:3001"
         networks:
@@ -106,13 +106,13 @@ services:
             - /Users/radheshyambhati/Documents/Ai for India/medconnect-india/backend/.keploy/keploy:/keploy-host
         command:
             - --port
-            - "59139"
+            - "64707"
             - --proxy-port
             - "16789"
             - --dns-port
             - "26789"
             - --client-pid
-            - "40527"
+            - "52157"
             - --mode
             - record
             - --is-docker

@@ -1,12 +1,14 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { api, type DocumentItem, type DocumentDetail } from "@/lib/api-client";
 
 export function useDocuments(params?: {
   page?: number;
   limit?: number;
   documentType?: string;
+  status?: string;
+  search?: string;
 }) {
   return useQuery({
     queryKey: ["documents", params],
@@ -15,7 +17,7 @@ export function useDocuments(params?: {
 }
 
 export function useDocument(id: string) {
-  return useQuery({
+  return useQuery<DocumentDetail>({
     queryKey: ["document", id],
     queryFn: () => api.documents.get(id),
     enabled: !!id,
@@ -26,9 +28,11 @@ export function useUploadDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (file: File) => api.documents.upload(file),
+    mutationFn: (params: { file: File; metadata?: { documentType?: string; documentDate?: string } }) =>
+      api.documents.upload(params.file, params.metadata),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 }
@@ -40,14 +44,7 @@ export function useDeleteDocument() {
     mutationFn: (id: string) => api.documents.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
-  });
-}
-
-export function useDocumentExtraction(id: string) {
-  return useQuery({
-    queryKey: ["document-extraction", id],
-    queryFn: () => api.documents.getExtraction(id),
-    enabled: !!id,
   });
 }
