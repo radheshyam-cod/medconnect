@@ -1,18 +1,367 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useDocument, useDeleteDocument } from "@/hooks/use-documents";
+import { useDocument } from "@/hooks/use-documents";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ArrowLeft, Trash2, Download, FileText, AlertCircle } from "lucide-react";
-import { formatDate, formatDateTime } from "@/lib/utils";
-
+import {
+  Loader2,
+  ArrowLeft,
+  Trash2,
+  Download,
+  FileText,
+  AlertCircle,
+  Sparkles,
+  CheckCircle2,
+  FileSearch,
+  Brain,
+  Share2,
+  Clock,
+  RefreshCw,
+  Eye,
+  FileImage,
+} from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, type DocumentDetail } from "@/lib/api-client";
+import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 
-function SecureImage({ id, alt, className }: { id: string; alt: string; className?: string }) {
+export default function DocumentDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const id = params.id as string;
+
+  const { data: document, isLoading, error } = useDocument(id);
+
+  const handleDelete = async () => {
+    try {
+      await api.documents.delete(id);
+      toast.success("Document deleted");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      router.push("/documents");
+    } catch {
+      toast.error("Failed to delete document");
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const res = await api.documents.getDownloadUrl(id);
+      if (res.url) window.open(res.url, "_blank");
+      else toast.error("Download URL not available");
+    } catch {
+      toast.error("Failed to get download link");
+    }
+  };
+
+  const regenerateExtraction = async () => {
+    toast.info("Extraction regeneration requested. This may take a moment.");
+    // In a real app, this would call a backend endpoint to re-process
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+        <p className="text-sm text-muted-foreground">Loading document...</p>
+      </div>
+    );
+  }
+
+  if (error || !document) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold">Document not found</h2>
+        <p className="text-sm text-muted-foreground mb-6">This document may have been deleted or you don&apos;t have access.</p>
+        <Button onClick={() => router.push("/documents")}>Back to Documents</Button>
+      </div>
+    );
+  }
+
+  const extraction = document.extraction;
+  const isImage = document.fileType?.startsWith("image/");
+  const isPdf = document.fileType === "application/pdf";
+  const isCompleted = document.status === "COMPLETED";
+  const isProcessing = document.status === "PROCESSING";
+
+  // Parse extraction data
+  const rawText = extraction?.rawText || "";
+  const diseases = extraction?.diseases ? (Array.isArray(extraction.diseases) ? extraction.diseases : [extraction.diseases]) : [];
+  const medicines = extraction?.medicines ? (Array.isArray(extraction.medicines) ? extraction.medicines : [extraction.medicines]) : [];
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      {/* Back + Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/documents")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">{document.fileName}</h1>
+              {isCompleted ? (
+                <Badge variant="success" className="text-[10px]">
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
+                </Badge>
+              ) : isProcessing ? (
+                <Badge variant="warning" className="text-[10px]">
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processing
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px]">{document.status}</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Uploaded {formatDateTime(document.createdAt)}
+              {document.fileSize && ` • ${(document.fileSize / 1024 / 1024).toFixed(1)} MB`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownload}>
+            <Download className="h-4 w-4 mr-1.5" /> Download
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => toast.info("Share coming soon")}>
+            <Share2 className="h-4 w-4 mr-1.5" /> Share
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* File Preview */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="h-4 w-4 text-primary" />
+                Document Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center rounded-lg border bg-gradient-to-br from-muted/30 to-muted/10 min-h-[200px]">
+                {isImage ? (
+                  <SecureImage id={document.id} alt={document.fileName} />
+                ) : (
+                  <div className="flex flex-col items-center gap-3 p-8">
+                    <FileText className="h-16 w-16 text-primary/30" />
+                    <p className="text-sm text-muted-foreground">PDF Preview not available inline</p>
+                    <Button variant="outline" size="sm" onClick={handleDownload}>
+                      <Eye className="h-4 w-4 mr-1.5" /> Open PDF
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* OCR Text */}
+          {rawText && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <FileSearch className="h-4 w-4 text-emerald-500" />
+                  OCR Text
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="whitespace-pre-wrap text-xs text-muted-foreground leading-relaxed font-mono bg-muted/50 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                  {rawText}
+                </pre>
+                {document.ocrConfidence !== undefined && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Confidence:</span>
+                    <div className="flex-1 max-w-[200px] h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${document.ocrConfidence}%` }}
+                      />
+                    </div>
+                    <span className="tabular-nums">{document.ocrConfidence}%</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Extraction */}
+          {extraction && (
+            <Card className="border-primary/10">
+              <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  AI Extraction
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {/* Diseases */}
+                {diseases.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Identified Conditions</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {diseases.map((d: any, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {typeof d === "string" ? d : d.name || d.condition || JSON.stringify(d)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Medicines */}
+                {medicines.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Extracted Medicines</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {medicines.map((m: any, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {typeof m === "string" ? m : m.name || m.medicine || JSON.stringify(m)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other extracted data */}
+                {extraction.doctors && Array.isArray(extraction.doctors) && extraction.doctors.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Doctors</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {extraction.doctors.map((d: any, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs">{typeof d === "string" ? d : d.name || JSON.stringify(d)}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {extraction.hospitals && Array.isArray(extraction.hospitals) && extraction.hospitals.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Hospitals</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {extraction.hospitals.map((h: any, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs">{typeof h === "string" ? h : h.name || JSON.stringify(h)}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {extraction.confidence !== undefined && (
+                  <div className="pt-2 border-t">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      <span>AI Confidence: {Math.round(extraction.confidence * 100)}%</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Processing state */}
+          {!isCompleted && !isProcessing && document.status === "PENDING" && (
+            <Card>
+              <CardContent className="flex items-center gap-3 py-6">
+                <Clock className="h-8 w-8 text-muted-foreground/50" />
+                <div>
+                  <p className="text-sm font-medium">Waiting for processing</p>
+                  <p className="text-xs text-muted-foreground">The document is queued for OCR and extraction.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isProcessing && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="flex items-center gap-3 py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Processing your document...</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs text-muted-foreground">OCR in progress</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                    <span className="text-xs text-muted-foreground/50">Extraction queued</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-4">
+          {/* Document Info */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="font-medium">{document.documentType || "Document"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Format</span>
+                <span className="font-medium">{document.fileType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Size</span>
+                <span className="font-medium">{(document.fileSize / 1024 / 1024).toFixed(1)} MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <Badge variant={isCompleted ? "success" : isProcessing ? "warning" : "secondary"} className="text-[9px] h-4">
+                  {document.status}
+                </Badge>
+              </div>
+              {document.documentDate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Document Date</span>
+                  <span className="font-medium">{formatDateTime(document.documentDate)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-2" /> Download
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={regenerateExtraction}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Regenerate Extraction
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => toast.info("Timeline generation coming soon")}>
+                <Sparkles className="h-4 w-4 mr-2" /> Generate Timeline
+              </Button>
+              <Button variant="destructive" size="sm" className="w-full justify-start" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Document
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Secure Image Component ───
+
+function SecureImage({ id, alt }: { id: string; alt: string }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,268 +371,13 @@ function SecureImage({ id, alt, className }: { id: string; alt: string; classNam
   }, [id]);
 
   if (!url) {
-    return <div className={`flex items-center justify-center bg-muted/30 ${className}`}><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={alt} className={className} />
-  );
-}
-
-function SecurePdfButton({ id, publicUrl }: { id: string, publicUrl: string }) {
-  const [url, setUrl] = useState<string>(publicUrl);
-  
-  useEffect(() => {
-    api.documents.getDownloadUrl(id).then((res) => {
-      if (res.url) setUrl(res.url);
-    });
-  }, [id]);
-
-  return (
-    <Button variant="outline" asChild>
-      <a href={url} target="_blank" rel="noopener noreferrer">
-        Open PDF
-      </a>
-    </Button>
-  );
-}
-
-export default function DocumentDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
-
-  const { data: document, isLoading, error } = useDocument(id);
-  const deleteMutation = useDeleteDocument();
-
-  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (error || !document) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-lg font-medium">Document not found</p>
-        <p className="text-sm text-muted-foreground mb-4">
-          This document may have been deleted or you don't have access.
-        </p>
-        <Button onClick={() => router.push("/documents")}>
-          Back to Documents
-        </Button>
-      </div>
-    );
-  }
-
-  const handleDelete = async () => {
-    if (confirm("Are you sure you want to delete this document?")) {
-      await deleteMutation.mutateAsync(id);
-      router.push("/documents");
-    }
-  };
-
-  const handleDownload = async () => {
-    try {
-      const res = await api.documents.getDownloadUrl(id);
-      if (res.url) {
-        window.open(res.url, "_blank");
-      }
-    } catch (e) {
-      console.error("Failed to download document", e);
-    }
-  };
-
-  const statusVariant: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {
-    PENDING: "secondary",
-    PROCESSING: "warning",
-    COMPLETED: "success",
-    FAILED: "destructive",
-  };
-
-  return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/documents")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight truncate max-w-lg">
-              {document.fileName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Uploaded {formatDateTime(document.createdAt)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant={statusVariant[document.status] || "secondary"}>
-              {document.status}
-            </Badge>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              {document.documentType
-                ? document.documentType.replace(/_/g, " ")
-                : "Not specified"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Size</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              {document.fileSize
-                ? `${(document.fileSize / (1024 * 1024)).toFixed(1)} MB`
-                : "Unknown"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {document.fileType?.startsWith('image/') && (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <SecureImage 
-              id={document.id}
-              alt={document.fileName} 
-              className="w-full h-auto min-h-[300px] max-h-[600px] object-contain bg-muted/30" 
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {document.fileType === 'application/pdf' && (
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-red-100 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="font-medium">PDF Document</p>
-                <p className="text-sm text-muted-foreground">Preview not available in-app</p>
-              </div>
-            </div>
-            <SecurePdfButton id={document.id} publicUrl={document.publicUrl || ''} />
-          </CardContent>
-        </Card>
-      )}
-
-      {document.extraction && (
-        <>
-          <Separator />
-          <Card>
-            <CardHeader>
-              <CardTitle>Extracted Information</CardTitle>
-              <CardDescription>
-                Data extracted via OCR with{" "}
-                {document.ocrConfidence
-                  ? `${(document.ocrConfidence * 100).toFixed(0)}% confidence`
-                  : "pending confidence"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {document.extraction.diseases?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Diseases & Conditions</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {document.extraction.diseases.map((d: any, i: number) => (
-                      <Badge key={i} variant="secondary">
-                        {d.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {document.extraction.medicines?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Medicines</h3>
-                  <div className="space-y-2">
-                    {document.extraction.medicines.map((m: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg border p-3">
-                        <div>
-                          <p className="font-medium">{m.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {[m.dosage, m.frequency, m.duration].filter(Boolean).join(" · ")}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {document.extraction.labValues?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Lab Values</h3>
-                  <div className="space-y-2">
-                    {document.extraction.labValues.map((l: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg border p-3">
-                        <div>
-                          <p className="font-medium">{l.testName}</p>
-                          <p className="text-sm text-muted-foreground">{l.category}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`font-mono font-medium ${l.isAbnormal ? "text-destructive" : ""}`}>
-                            {l.value} {l.unit}
-                          </p>
-                          {l.referenceRange && (
-                            <p className="text-xs text-muted-foreground">
-                              Range: {l.referenceRange}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {document.extraction.doctors?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Doctors</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {document.extraction.doctors.map((d: any, i: number) => (
-                      <Badge key={i} variant="outline">
-                        {d.name}
-                        {d.specialization && ` (${d.specialization})`}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={alt} className="max-w-full max-h-[500px] object-contain rounded-lg" />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import {
   LayoutDashboard,
@@ -17,22 +17,31 @@ import {
   Menu,
   X,
   Bell,
+  Sparkles,
+  ChevronRight,
+  Heart,
+  Command,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import { VoiceAssistantWidget } from "@/components/voice-assistant/voice-assistant-widget";
+import { VoiceAssistant } from "@/components/voice/VoiceAssistant";
+import { QuickActions } from "@/components/premium/quick-actions";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 
 const sidebarItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/timeline", label: "Health Timeline", icon: Activity },
-  { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/medications", label: "Medications", icon: Pill },
-  { href: "/labs", label: "Lab Reports", icon: FlaskConical },
-  { href: "/doctor-summary", label: "Doctor Summary", icon: Stethoscope },
-  { href: "/family", label: "Family", icon: Users },
-  { href: "/share", label: "Secure Sharing", icon: Share2 },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "D" },
+  { href: "/timeline", label: "Health Timeline", icon: Activity, shortcut: "T" },
+  { href: "/documents", label: "Documents", icon: FileText, shortcut: "F" },
+  { href: "/medications", label: "Medications", icon: Pill, shortcut: "M" },
+  { href: "/labs", label: "Lab Reports", icon: FlaskConical, shortcut: "L" },
+  { href: "/doctor-summary", label: "Doctor Summary", icon: Stethoscope, shortcut: "S" },
+  { href: "/family", label: "Family", icon: Users, shortcut: "G" },
+  { href: "/share", label: "Secure Sharing", icon: Share2, shortcut: "H" },
+  { href: "/search", label: "Search", icon: Search, shortcut: "/" },
+  { href: "/settings", label: "Settings", icon: Settings, shortcut: "," },
 ];
 
 export default function DashboardLayout({
@@ -41,11 +50,144 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Fetch counts for sidebar badges
+  const { data: dashboardStats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => api.dashboard.getStats(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: timelineSummary } = useQuery({
+    queryKey: ["timeline-summary"],
+    queryFn: () => api.timeline.getSummary(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: documents } = useQuery({
+    queryKey: ["documents"],
+    queryFn: () => api.documents.list({ limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: labs } = useQuery({
+    queryKey: ["labs", { page: 1, limit: 1 }],
+    queryFn: () => api.labs.list({ page: 1, limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: medications } = useQuery({
+    queryKey: ["medications", { isActive: true }],
+    queryFn: () => api.medications.list({ isActive: true }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Badge counts from API
+  const badgeCounts: Record<string, number> = {
+    "/documents": dashboardStats?.totalDocuments ?? documents?.total ?? 0,
+    "/timeline": timelineSummary?.totalEvents ?? 0,
+    "/labs": labs?.total ?? 0,
+    "/medications": medications?.length ?? dashboardStats?.activeMedications ?? 0,
+    "/family": 0,
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const key = e.key.toLowerCase();
+      if (key === "/") {
+        e.preventDefault();
+        setShowSearch(true);
+        return;
+      }
+
+      const shortcutMap: Record<string, string> = {
+        d: "/dashboard", t: "/timeline", f: "/documents",
+        m: "/medications", l: "/labs", s: "/doctor-summary",
+        g: "/family", h: "/share", ",": "/settings",
+      };
+
+      if (e.metaKey || e.ctrlKey) {
+        const path = shortcutMap[key];
+        if (path) {
+          e.preventDefault();
+          router.push(path);
+        }
+        if (key === "k") {
+          e.preventDefault();
+          setShowSearch(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [router]);
+
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setShowSearch(false);
+    }
+  }, [searchQuery, router]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Command palette overlay */}
+      {showSearch && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowSearch(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg p-4">
+            <div className="rounded-2xl border bg-background shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <form onSubmit={handleSearch} className="flex items-center gap-3 border-b px-4 py-3">
+                <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search across all records..."
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                  ESC
+                </kbd>
+              </form>
+              <div className="p-2 text-xs text-muted-foreground">
+                <div className="px-2 py-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Quick Navigation</p>
+                  <div className="mt-1 space-y-0.5">
+                    {sidebarItems.map((item) => (
+                      <button
+                        key={item.href}
+                        onClick={() => { router.push(item.href); setShowSearch(false); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+                      >
+                        <item.icon className="h-4 w-4 text-muted-foreground" />
+                        <span>{item.label}</span>
+                        <kbd className="ml-auto text-[10px] text-muted-foreground/60">
+                          {item.shortcut === "/" ? "⌘K" : `⌘${item.shortcut.toUpperCase()}`}
+                        </kbd>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -54,116 +196,149 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Premium Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-sidebar transition-transform duration-300 lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-14 items-center border-b px-4">
+        {/* Brand */}
+        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 font-semibold text-sidebar-foreground"
+            className="flex items-center gap-2.5 font-semibold text-sidebar-foreground group"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              MC
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-sm font-bold text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
+              <Heart className="h-4 w-4" />
             </div>
-            <span>MedConnect</span>
+            <span className="text-sm">MedConnect</span>
+            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">AI</span>
           </Link>
           <button
-            className="ml-auto lg:hidden"
+            className="ml-auto lg:hidden text-sidebar-foreground"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-none">
           {sidebarItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
+            const count = badgeCounts[item.href];
+            const hasCount = count > 0;
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <Icon className="h-4 w-4" />
-                {item.label}
+                <Icon className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  isActive ? "text-primary" : "group-hover:scale-110"
+                )} />
+                <span className="flex-1">{item.label}</span>
+
+                {/* Badge count */}
+                {hasCount && (
+                  <span className={cn(
+                    "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-sidebar-accent text-sidebar-foreground group-hover:bg-sidebar-accent"
+                  )}>
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+
+                {/* Active indicator */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-primary" />
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t p-3">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+        {/* Bottom section: User & Theme */}
+        <div className="border-t border-sidebar-border p-3 space-y-2">
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sidebar-accent/50">
             <UserButton afterSignOutUrl="/sign-in" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user?.fullName || user?.emailAddresses[0]?.emailAddress}
+              <p className="text-sm font-medium truncate text-sidebar-foreground">
+                {user?.fullName || user?.emailAddresses[0]?.emailAddress || "User"}
               </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user?.primaryEmailAddress?.emailAddress}
+              <p className="text-[11px] text-sidebar-foreground/50 truncate">
+                {user?.primaryEmailAddress?.emailAddress || ""}
               </p>
             </div>
+          </div>
+          <div className="flex items-center justify-between px-3">
+            <span className="text-[10px] text-sidebar-foreground/40">Theme</span>
+            <ModeToggle />
           </div>
         </div>
       </aside>
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center border-b bg-background px-4 lg:px-6">
+        {/* Top header bar */}
+        <header className="flex h-14 items-center border-b bg-background/80 backdrop-blur-md px-4 lg:px-6 sticky top-0 z-30">
           <button
-            className="mr-3 lg:hidden"
+            className="mr-3 lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="flex-1 max-w-md ml-4">
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const q = formData.get("q");
-                if (q) window.location.href = `/search?q=${encodeURIComponent(q as string)}`;
-              }}
-              className="relative"
+          {/* Search bar */}
+          <div className="flex-1 max-w-md ml-0 lg:ml-2">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="group relative flex w-full items-center gap-2 rounded-lg border border-input bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground transition-all hover:border-primary/30 hover:bg-muted/50 hover:text-foreground"
             >
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="search"
-                name="q"
-                placeholder="Search across records..."
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pl-9"
-              />
-            </form>
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left text-xs">Search across records...</span>
+              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground/60">
+                <Command className="h-2.5 w-2.5" />K
+              </kbd>
+            </button>
           </div>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-3">
-            <ModeToggle />
-            <button className="relative rounded-full p-2 hover:bg-accent transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-destructive" />
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button className="relative rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-destructive">
+                <span className="absolute inset-0 rounded-full bg-destructive animate-ping opacity-75" />
+              </span>
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 scrollbar-none">
           {children}
         </main>
       </div>
 
-      <VoiceAssistantWidget />
+      {/* Global Voice Assistant FAB */}
+      <VoiceAssistant position="bottom-right" />
+
+      {/* Quick Actions FAB */}
+      <QuickActions />
     </div>
   );
 }

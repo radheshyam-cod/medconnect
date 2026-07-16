@@ -50,29 +50,29 @@ export class MemoryProcessor extends WorkerHost {
     try {
       switch (eventType) {
         case MemoryEventType.DOCUMENT_UPLOADED:
-          return this.syncDocumentUpload(userId, data);
+          return await this.syncDocumentUpload(userId, data);
         case MemoryEventType.OCR_COMPLETED:
-          return this.syncOcrCompleted(userId, data);
+          return await this.syncOcrCompleted(userId, data);
         case MemoryEventType.EXTRACTION_COMPLETED:
-          return this.syncExtraction(userId, data);
+          return await this.syncExtraction(userId, data);
         case MemoryEventType.MEDICATION_CREATED:
-          return this.syncMedication(userId, data, 'created');
+          return await this.syncMedication(userId, data, 'created');
         case MemoryEventType.MEDICATION_UPDATED:
-          return this.syncMedication(userId, data, 'updated');
+          return await this.syncMedication(userId, data, 'updated');
         case MemoryEventType.MEDICATION_DELETED:
-          return this.syncMedicationDeleted(userId, data);
+          return await this.syncMedicationDeleted(userId, data);
         case MemoryEventType.LAB_CREATED:
-          return this.syncLabResult(userId, data, 'created');
+          return await this.syncLabResult(userId, data, 'created');
         case MemoryEventType.LAB_UPDATED:
-          return this.syncLabResult(userId, data, 'updated');
+          return await this.syncLabResult(userId, data, 'updated');
         case MemoryEventType.TIMELINE_CREATED:
-          return this.syncTimelineEvent(userId, data);
+          return await this.syncTimelineEvent(userId, data);
         case MemoryEventType.SUMMARY_GENERATED:
-          return this.syncSummary(userId, data);
+          return await this.syncSummary(userId, data);
         case MemoryEventType.FHIR_IMPORTED:
-          return this.syncFhirImport(userId, data);
+          return await this.syncFhirImport(userId, data);
         case MemoryEventType.MANUAL_CORRECTION:
-          return this.syncManualCorrection(userId, data);
+          return await this.syncManualCorrection(userId, data);
         default:
           this.logger.warn(`Unhandled event type: ${eventType}`);
           return false;

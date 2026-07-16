@@ -22,7 +22,7 @@ import { FhirModule } from './modules/fhir/fhir.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MemoryModule } from './modules/memory/memory.module';
 import { AIContextModule } from './modules/ai-context/ai-context.module';
-import { VoiceAssistantModule } from './modules/voice-assistant/voice-assistant.module';
+import { VoiceModule } from './modules/voice/voice.module';
 
 @Module({
   imports: [
@@ -80,7 +80,7 @@ import { VoiceAssistantModule } from './modules/voice-assistant/voice-assistant.
     SharingModule,
     FhirModule,
     DashboardModule,
-    VoiceAssistantModule,
+    VoiceModule,
   ],
   providers: [
     {

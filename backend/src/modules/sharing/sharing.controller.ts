@@ -2,10 +2,32 @@ import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
 import { SharingService } from './sharing.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
+import { IsString, IsNumber, IsOptional, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class SharedResourceDto {
+  @IsString()
+  @IsNotEmpty()
+  resourceType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resourceId: string;
+}
+
 export class CreateLinkDto {
+  @IsString()
+  @IsOptional()
   title?: string;
+
+  @IsNumber()
+  @IsOptional()
   expiresInDays?: number;
-  resources: { resourceType: string; resourceId: string }[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SharedResourceDto)
+  resources: SharedResourceDto[];
 }
 
 @Controller('sharing')

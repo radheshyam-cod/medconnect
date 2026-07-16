@@ -27,11 +27,25 @@ COPY packages/ packages/
 RUN cd backend && npx prisma generate --schema=../database/prisma/schema.prisma
 
 # Build shared packages first
-RUN pnpm --filter @medconnect/shared-types build 2>/dev/null || true
-RUN pnpm --filter @medconnect/fhir-parser build 2>/dev/null || true
+RUN pnpm --filter @medconnect/shared-types build
+RUN pnpm --filter @medconnect/fhir-parser build
 
 # Build NestJS backend
 RUN cd backend && npx nest build
+
+# Create a self-contained deployment package with pnpm deploy
+# --legacy flag needed for pnpm v10 to deploy from workspace packages
+RUN pnpm deploy --filter @medconnect/api --prod --legacy /app/deploy
+
+# Copy the built NestJS output (pnpm deploy doesn't include build artifacts)
+# Use trailing /. to copy contents, not the directory itself
+# This ensures main.js is at /app/deploy/dist/main.js (not /app/deploy/dist/src/main.js)
+RUN cp -r /app/backend/dist/src/. /app/deploy/dist/ && \
+    # Copy generated Prisma client (prisma generate ran after install, so deploy misses it)
+    cp -r /app/backend/node_modules/.prisma /app/deploy/node_modules/.prisma && \
+    # Copy Prisma schema for reference (optional, generated client is self-contained)
+    mkdir -p /app/deploy/database/prisma && \
+    cp /app/database/prisma/schema.prisma /app/deploy/database/prisma/
 
 # ─── Production Stage ───
 FROM node:20-alpine AS runner
@@ -44,18 +58,8 @@ RUN apk add --no-cache tini
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nestjs
 
-# Copy Prisma schema (for reference) and generated client from builder
-COPY --from=builder /app/database/prisma ./database/prisma
-COPY --from=builder /app/backend/node_modules/.prisma ./node_modules/.prisma
-
-# Copy built backend artifacts
-COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/backend/node_modules ./node_modules
-COPY --from=builder /app/backend/package.json ./package.json
-
-# Copy shared package artifacts needed at runtime
-COPY --from=builder /app/packages/shared-types/dist ./node_modules/@medconnect/shared-types/dist
-COPY --from=builder /app/packages/fhir-parser/dist ./node_modules/@medconnect/fhir-parser/dist
+# Copy the entire deployment package (includes flat node_modules)
+COPY --from=builder /app/deploy .
 
 # Set ownership
 RUN chown -R nestjs:nodejs /app

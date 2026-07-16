@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
+import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 import helmet from "helmet";
 
 async function bootstrap() {
@@ -42,6 +43,9 @@ async function bootstrap() {
 
   // Global response transformer
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Swagger documentation
   const swaggerConfig = new DocumentBuilder()

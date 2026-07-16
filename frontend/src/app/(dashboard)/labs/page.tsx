@@ -1,3 +1,4 @@
+import Link from "next/link";
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -5,78 +6,180 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FlaskConical, AlertTriangle, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  FlaskConical,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Search,
+  FileText,
+  Sparkles,
+  ChevronRight,
+  ArrowUpDown,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { LabCard } from "@/components/premium/lab-card";
+import { PageSkeleton } from "@/components/premium/page-skeleton";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+
+const CATEGORIES = [
+  { value: "", label: "All Tests" },
+  { value: "BLOOD", label: "Blood" },
+  { value: "URINE", label: "Urine" },
+  { value: "LIPID", label: "Lipid" },
+  { value: "LIVER", label: "Liver" },
+  { value: "KIDNEY", label: "Kidney" },
+  { value: "THYROID", label: "Thyroid" },
+  { value: "OTHER", label: "Other" },
+];
 
 export default function LabsPage() {
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useQuery({
-    queryKey: ["labs", { page }],
-    queryFn: () => api.labs.list({ page, limit: 10 }),
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "abnormal">("newest");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["labs", { page, limit: 20 }],
+    queryFn: () => api.labs.list({ page, limit: 20 }),
   });
 
-  const labs = Array.isArray(data) ? data : (data as any)?.results || [];
+  const labs = data?.results ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / 20);
+
+  // Filter and sort
+  let filteredLabs = categoryFilter ? labs.filter((l) => l.category === categoryFilter) : labs;
+
+  filteredLabs = [...filteredLabs].sort((a, b) => {
+    if (sortBy === "newest") return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === "oldest") return new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (sortBy === "abnormal") return (b.isAbnormal ? 1 : 0) - (a.isAbnormal ? 1 : 0);
+    return 0;
+  });
+
+  const abnormalCount = filteredLabs.filter((l) => l.isAbnormal).length;
+  const normalCount = filteredLabs.filter((l) => !l.isAbnormal).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto pb-10">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Lab Reports</h1>
-          <p className="text-muted-foreground">Track your biomarkers and test results over time</p>
+          <p className="text-muted-foreground text-sm">Track your biomarkers and test results over time</p>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* Stats */}
+      {!isLoading && labs.length > 0 && (
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{total} total tests</span>
+          <span className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3 text-emerald-500" />
+            {normalCount} normal
+          </span>
+          {abnormalCount > 0 && (
+            <span className="flex items-center gap-1">
+              <AlertCircle className="h-3 w-3 text-red-500" />
+              {abnormalCount} abnormal
+            </span>
+          )}
         </div>
-      ) : !labs || labs.length === 0 ? (
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        {CATEGORIES.map((cat) => (
+          <Badge
+            key={cat.value}
+            variant={categoryFilter === cat.value ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => { setCategoryFilter(cat.value); setPage(1); }}
+          >
+            {cat.label}
+          </Badge>
+        ))}
+        <div className="flex items-center gap-1 ml-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs gap-1 h-7"
+            onClick={() => {
+              const order = ["newest", "oldest", "abnormal"] as const;
+              const idx = order.indexOf(sortBy);
+              setSortBy(order[(idx + 1) % order.length]);
+            }}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <PageSkeleton type="list" />
+      ) : isError ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <FlaskConical className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium">No lab results found</h3>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+            <p className="font-semibold">Failed to load lab results</p>
+          </CardContent>
+        </Card>
+      ) : filteredLabs.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/10 to-purple-500/5">
+              <FlaskConical className="h-8 w-8 text-purple-500/60" />
+            </div>
+            <h3 className="text-lg font-semibold">No Lab Results Found</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               Upload your lab reports and our AI will automatically extract and track your biomarkers here.
             </p>
+            <div className="flex gap-2 mt-4">
+              <Badge variant="outline">Blood Tests</Badge>
+              <Badge variant="outline">Urinalysis</Badge>
+              <Badge variant="outline">Lipid Profile</Badge>
+            </div>
+            <Button variant="outline" className="mt-6" asChild>
+              <Link href="/documents">Upload Lab Report</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {labs.map((lab: any) => (
-            <Card key={lab.id} className={`overflow-hidden hover:shadow-md transition-shadow ${lab.isAbnormal ? 'border-red-200 bg-red-50/10' : ''}`}>
-              <CardContent className="p-0">
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold">{lab.testName}</h3>
-                    {lab.isAbnormal ? (
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                    ) : (
-                      <CheckCircle className="h-5 w-5 text-emerald-500" />
-                    )}
-                  </div>
-                  
-                  <div className="flex items-end gap-2 mb-2">
-                    <span className={`text-2xl font-bold ${lab.isAbnormal ? 'text-red-600' : ''}`}>
-                      {lab.value}
-                    </span>
-                    {lab.unit && (
-                      <span className="text-muted-foreground mb-1">{lab.unit}</span>
-                    )}
-                  </div>
-                  
-                  {lab.referenceRange && (
-                    <p className="text-xs text-muted-foreground">
-                      Reference: {lab.referenceRange}
-                    </p>
-                  )}
-                </div>
-                <div className="bg-muted/30 px-4 py-2 text-xs border-t text-muted-foreground flex justify-between">
-                  <span>{formatDate(lab.date)}</span>
-                  {lab.category && <span>{lab.category}</span>}
-                </div>
-              </CardContent>
-            </Card>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={cn(
+            viewMode === "grid"
+              ? "grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "space-y-2"
+          )}
+        >
+          {filteredLabs.map((lab) => (
+            <LabCard key={lab.id} lab={lab} />
           ))}
+        </motion.div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            Page {page} of {totalPages}
+          </span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            Next
+          </Button>
         </div>
       )}
     </div>
