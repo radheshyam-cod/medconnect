@@ -25,8 +25,7 @@ on:
       - "docs/**"
 
 env:
-  NODE_VERSION: "20"
-  PNPM_VERSION: "10"
+  NODE_VERSION: "24"
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/medconnect_test?schema=public"
   REDIS_URL: "redis://localhost:6379"
   CLERK_SECRET_KEY: "test-clerk-secret-key-placeholder"
@@ -71,8 +70,6 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -129,8 +126,6 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -173,8 +168,6 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
