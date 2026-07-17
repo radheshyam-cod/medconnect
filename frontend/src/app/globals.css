@@ -206,3 +206,275 @@
   .bg-health-warning { background: hsl(var(--health-score-warning)); }
   .bg-health-bad { background: hsl(var(--health-score-bad)); }
 }
+
+/* Clerk Google OAuth Button, Email Input & Continue Button Overrides (Exact Same Height & Clean Layout) */
+.cl-socialButtonsBlockButton,
+.cl-formFieldInput,
+.cl-formButtonPrimary {
+  height: 2.5rem !important; /* EXACT same height (40px) across email box, Google button, and Continue button */
+  min-height: 2.5rem !important;
+  max-height: 2.5rem !important;
+  border-radius: 0.75rem !important;
+}
+
+.cl-formButtonPrimary {
+  padding: 0 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  margin-top: 0 !important;
+}
+
+/* Decrease vertical spacing between form fields (like email input) and Continue button */
+.cl-form {
+  gap: 0.375rem !important; /* Exactly 6px gap */
+  row-gap: 0.375rem !important;
+}
+
+.cl-formFieldLabelRow,
+.cl-formFieldLabel,
+.cl-formFieldLabelRow label,
+.cl-formFieldLabelRow p,
+.cl-formFieldLabelRow span {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.15 !important;
+}
+
+/* Completely REMOVE and hide Optional text next to First name / Last name labels */
+.cl-formFieldOptionalHint,
+.cl-formFieldLabel__optional,
+.cl-formFieldLabelRow__optional,
+.cl-formFieldLabelRow [class*="optional" i],
+.cl-formFieldLabel [class*="optional" i],
+.cl-formFieldLabelRow span[class*="Hint" i] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.cl-formFieldRow {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  column-gap: 1rem !important; /* 16px horizontal gap between First Name and Last Name */
+  gap: 0 1rem !important;
+  row-gap: 0 !important;
+}
+
+.cl-formField {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  gap: 0 !important;
+  row-gap: 0 !important;
+}
+
+.cl-formActions {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  gap: 0.25rem !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border: 1px solid #e2e8f0 !important;
+  background-color: #ffffff !important;
+  padding: 0 0.875rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  position: relative !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  border-color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .cl-socialButtonsBlockButton {
+  border-color: #1e293b !important;
+  background-color: #0f172a !important;
+}
+
+.dark .cl-socialButtonsBlockButton:hover {
+  border-color: #334155 !important;
+  background-color: #1e293b !important;
+}
+
+.cl-socialButtonsBlockButtonText {
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: #0a192f !important;
+  flex: 1 !important;
+  text-align: center !important;
+}
+
+.dark .cl-socialButtonsBlockButtonText {
+  color: #ffffff !important;
+}
+
+.cl-socialButtonsProviderIcon {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* Completely REMOVE and hide default Last used floating badge */
+.cl-badge,
+.cl-socialButtonsBlockButtonBadge,
+.cl-socialButtonsBadge,
+.cl-socialButtonsBlockButton .cl-badge,
+.cl-socialButtonsBlockButton [class*="badge" i],
+.cl-socialButtonsBlockButton [class*="Badge"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Add exact Recommended mint-green badge inside the button */
+.cl-socialButtonsBlockButton[data-provider="google"]::after,
+.cl-socialButtonsBlockButton::after {
+  content: "Recommended";
+  background-color: #d1fae5;
+  color: #059669;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.375rem;
+  line-height: 1.2;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.dark .cl-socialButtonsBlockButton[data-provider="google"]::after,
+.dark .cl-socialButtonsBlockButton::after {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+/* Ensure Clerk auth card merges completely into our outer unified card (transparent, borderless, shadow-free, no extra padding) */
+.cl-rootBox {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.cl-card,
+.cl-cardBox,
+.cl-main,
+.cl-signIn-start,
+.cl-signUp-start,
+.cl-internal-b3fm6y,
+.cl-internal-[class*="card"],
+.cl-card > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: auto !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+/* Add clean horizontal margin (side padding) to the form containing input boxes and continue button */
+.cl-form {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+}
+
+/* Make all other form wrappers and input boxes stretch to full available 100% width inside .cl-form */
+.cl-main,
+.cl-formField,
+.cl-formFieldInput,
+.cl-socialButtonsBlockButton,
+.cl-formButtonPrimary {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Tighten gap between headerSubtitle and social authentication buttons */
+.cl-header {
+  margin-bottom: 0.25rem !important;
+  padding-bottom: 0 !important;
+}
+
+.cl-headerSubtitle {
+  margin-bottom: 0.15rem !important;
+  padding-bottom: 0 !important;
+}
+
+.cl-socialButtons,
+.cl-dividerRow {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-top: 0 !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+}
+
+/* Hide Clerk's default footer, footer actions, and internal branding/Development mode banners completely */
+.cl-footer,
+.cl-footerAction,
+.cl-internal-b3fm6y,
+.cl-internal-4x6gjz,
+.cl-internal-[class*="footer"],
+.cl-card > div:last-child:not(.cl-main):not(.cl-footer),
+.cl-card [class*="poweredBy" i],
+.cl-card [class*="Development" i],
+.cl-card a[href*="clerk.com"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Add clean envelope mail icon inside Email/Identifier input boxes */
+.cl-formFieldInput[name="identifier"],
+.cl-formFieldInput[name="emailAddress"],
+.cl-formFieldInput[type="email"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: 1rem center !important;
+  background-size: 1.15rem 1.15rem !important;
+  padding-left: 2.75rem !important;
+}
+
+/* Add right arrow icon to primary Continue submit button */
+.cl-formButtonPrimary {
+  position: relative !important;
+}
+
+.cl-formButtonPrimary::after {
+  content: "→";
+  position: absolute !important;
+  right: 1.25rem !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}

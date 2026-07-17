@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
@@ -236,11 +237,16 @@ export default function DashboardLayout({
             href="/dashboard"
             className="flex items-center gap-2.5 font-semibold text-sidebar-foreground group"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-sm font-bold text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
-              <Heart className="h-4 w-4" />
-            </div>
-            <span className="text-sm">MedConnect</span>
-            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">AI</span>
+            <Image
+              src="/logo.png"
+              alt="MedConnect Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain shrink-0 transition-transform group-hover:scale-105"
+              priority
+            />
+            <span className="text-base font-extrabold tracking-tight text-[#0c62ff] dark:text-[#3b82f6]">MedConnect</span>
+            <span className="rounded-md bg-[#0c62ff]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#0c62ff] dark:text-[#3b82f6]">AI</span>
           </Link>
           <button
             className="ml-auto lg:hidden text-sidebar-foreground"
@@ -323,6 +329,19 @@ export default function DashboardLayout({
           >
             <Menu className="h-5 w-5" />
           </button>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 mr-3 lg:hidden"
+          >
+            <Image
+              src="/logo.png"
+              alt="MedConnect Logo"
+              width={26}
+              height={26}
+              className="h-6 w-6 object-contain shrink-0"
+            />
+            <span className="font-extrabold text-base tracking-tight text-[#0c62ff] dark:text-[#3b82f6]">MedConnect</span>
+          </Link>
 
           {/* Search bar */}
           <div className="flex-1 max-w-md ml-0 lg:ml-2">
