@@ -15,6 +15,10 @@ export class SyncUserDto {
   @IsString()
   @IsOptional()
   lastName?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
 }
 
 @ApiTags("Auth")
@@ -29,19 +33,48 @@ export class AuthController {
     @CurrentUser("id") clerkId: string,
     @Body() dto: SyncUserDto
   ) {
+    const cleanEmail = dto.email.trim().toLowerCase();
     const fullName = [dto.firstName, dto.lastName].filter(Boolean).join(" ");
-    const user = await this.prisma.user.upsert({
+    
+    // First check if user exists by clerkId
+    let existingUser = await this.prisma.user.findUnique({
       where: { clerkId },
-      update: {
-        email: dto.email,
-        fullName: fullName || "User",
-      },
-      create: {
-        clerkId,
-        email: dto.email,
-        fullName: fullName || "User",
-      },
     });
-    return { success: true, userId: user.id };
+
+    // If not found by clerkId, check if a pending user was created by email (e.g. from a family invite)
+    if (!existingUser && cleanEmail) {
+      existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: {
+            equals: cleanEmail,
+            mode: "insensitive",
+          },
+        },
+      });
+    }
+
+    if (existingUser) {
+      const user = await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          clerkId,
+          email: cleanEmail,
+          fullName: fullName || existingUser.fullName || "User",
+          ...(dto.phone ? { phone: dto.phone } : {}),
+        },
+      });
+      return { success: true, userId: user.id };
+    } else {
+      const user = await this.prisma.user.create({
+        data: {
+          clerkId,
+          email: cleanEmail,
+          fullName: fullName || "User",
+          phone: dto.phone || null,
+        },
+      });
+      return { success: true, userId: user.id };
+    }
   }
 }
+

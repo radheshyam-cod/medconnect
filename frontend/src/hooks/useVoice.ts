@@ -240,13 +240,15 @@ export function useVoice(options?: {
     }
   }, [conversationId, languageCode, voice]);
 
-  const sendText = useCallback(async (text: string) => {
+  const sendText = useCallback(async (text: string, overrideLang?: string) => {
     if (!text.trim()) return;
 
     try {
       setError(null);
       setStatus("processing");
       setIsProcessing(true);
+
+      const effectiveLangCode = overrideLang || (/[\u0900-\u097F]/.test(text) ? "hi-IN" : languageCode);
 
       const userMsg: VoiceMessage = {
         id: `user-${Date.now()}`,
@@ -258,7 +260,7 @@ export function useVoice(options?: {
       setMessages((prev) => [...prev, userMsg]);
 
       const result = await textChat(text, {
-        languageCode,
+        languageCode: effectiveLangCode,
         voice,
         conversationId: conversationId || undefined,
         includeAudio: true,

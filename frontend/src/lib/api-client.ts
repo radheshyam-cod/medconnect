@@ -486,7 +486,7 @@ export const sharing = {
 };
 
 export const auth = {
-  sync: (data: { email: string; firstName?: string; lastName?: string }) =>
+  sync: (data: { email: string; firstName?: string; lastName?: string; phone?: string }) =>
     request<{ success: boolean; userId: string }>("/auth/sync", {
       method: "POST",
       body: JSON.stringify(data),

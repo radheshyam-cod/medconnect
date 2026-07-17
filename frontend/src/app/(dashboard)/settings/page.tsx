@@ -24,10 +24,16 @@ import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 
 export default function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { user } = useUser();
+
+  const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "User";
+  const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "Not provided";
+  const phone = user?.primaryPhoneNumber?.phoneNumber || user?.phoneNumbers?.[0]?.phoneNumber || "Not provided";
 
   const handleExportFHIR = async () => {
     try {
@@ -47,9 +53,9 @@ export default function SettingsPage() {
       title: "Account",
       description: "Manage your personal information and profile settings",
       items: [
-        { label: "Full Name", value: "—" },
-        { label: "Email", value: "—" },
-        { label: "Phone", value: "—" },
+        { label: "Full Name", value: fullName },
+        { label: "Email", value: email },
+        { label: "Phone", value: phone },
       ],
       color: "text-blue-500",
       bg: "bg-blue-100 dark:bg-blue-950/50",

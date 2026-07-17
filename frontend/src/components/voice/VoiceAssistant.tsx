@@ -30,6 +30,7 @@ export function VoiceAssistant({
   position = "bottom-right",
 }: VoiceAssistantProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [currentLang, setCurrentLang] = useState(languageCode);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [textInput, setTextInput] = useState("");
@@ -50,7 +51,7 @@ export function VoiceAssistant({
     cancelRecording,
     clearMessages,
     speakText,
-  } = useVoice({ languageCode, voice });
+  } = useVoice({ languageCode: currentLang, voice });
 
   // Determine recorder status using the explicit hasRecorded flag
   const recorderStatus: RecorderStatus =
@@ -98,13 +99,13 @@ export function VoiceAssistant({
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className={cn(
-              "fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl border bg-background shadow-2xl",
+              "fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl border bg-background shadow-2xl flex flex-col overflow-hidden",
               positionClasses,
             )}
-            style={{ maxHeight: "calc(100vh - 2rem)" }}
+            style={{ height: "600px", maxHeight: "calc(100vh - 2rem)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                   <Sparkles className="h-4 w-4 text-primary" />
@@ -112,11 +113,37 @@ export function VoiceAssistant({
                 <div>
                   <h3 className="text-sm font-semibold">Health Voice Assistant</h3>
                   <p className="text-[10px] text-muted-foreground">
-                    Ask about your health records
+                    Supports English &amp; हिंदी
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                {/* Language Toggle Switch */}
+                <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border text-[10px]">
+                  <button
+                    onClick={() => setCurrentLang("en-IN")}
+                    className={cn(
+                      "px-2 py-0.5 rounded font-medium transition-colors",
+                      currentLang === "en-IN"
+                        ? "bg-background text-primary shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => setCurrentLang("hi-IN")}
+                    className={cn(
+                      "px-2 py-0.5 rounded font-medium transition-colors",
+                      currentLang === "hi-IN"
+                        ? "bg-background text-primary shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    हिंदी
+                  </button>
+                </div>
+
                 {messages.length > 0 && (
                   <button
                     onClick={clearMessages}
@@ -138,33 +165,47 @@ export function VoiceAssistant({
 
             {/* Messages */}
             <div
-              className="overflow-y-auto px-4 py-3 space-y-3"
-              style={{ maxHeight: "400px" }}
+              className="overflow-y-auto px-4 py-3 space-y-3 flex-1 min-h-0"
             >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                     <Bot className="h-6 w-6 text-primary" />
                   </div>
-                  <p className="text-sm font-medium">How can I help you?</p>
-                  <p className="mt-1 text-xs text-muted-foreground max-w-[250px]">
-                    Tap the microphone and ask about your medications, lab results, or health timeline.
+                  <p className="text-sm font-medium">
+                    {currentLang === "hi-IN" ? "मैं आपकी कैसे मदद कर सकता हूँ?" : "How can I help you?"}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">                      {[
-                        { text: "What medicines am I taking?", lang: "en-IN" },
-                        { text: "Show my recent lab results", lang: "en-IN" },
-                        { text: "What happened in my last visit?", lang: "en-IN" },
-                      ].map((suggestion) => (
-                        <button
-                          key={suggestion.text}
-                          onClick={async () => {
-                            await sendText(suggestion.text);
-                          }}
-                          className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] text-primary transition-colors hover:bg-primary/10"
-                        >
-                          {suggestion.text}
-                        </button>
-                      ))}
+                  <p className="mt-1 text-xs text-muted-foreground max-w-[260px]">
+                    {currentLang === "hi-IN"
+                      ? "माइक पर टैप करें और अपनी दवाओं, लैब रिपोर्ट या स्वास्थ्य के बारे में हिंदी या अंग्रेजी में पूछें।"
+                      : "Tap the microphone and ask in English or Hindi about your medications, lab results, or health timeline."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    {(currentLang === "hi-IN"
+                      ? [
+                          { text: "मेरी दवाएं क्या हैं?", lang: "hi-IN" },
+                          { text: "मेरी हाल की लैब रिपोर्ट दिखाएं", lang: "hi-IN" },
+                          { text: "पिछली विज़िट में क्या हुआ था?", lang: "hi-IN" },
+                        ]
+                      : [
+                          { text: "What medicines am I taking?", lang: "en-IN" },
+                          { text: "Show my recent lab results", lang: "en-IN" },
+                          { text: "What happened in my last visit?", lang: "en-IN" },
+                        ]
+                    ).map((suggestion) => (
+                      <button
+                        key={suggestion.text}
+                        onClick={async () => {
+                          if (suggestion.lang !== currentLang) {
+                            setCurrentLang(suggestion.lang);
+                          }
+                          await sendText(suggestion.text);
+                        }}
+                        className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] text-primary transition-colors hover:bg-primary/10"
+                      >
+                        {suggestion.text}
+                      </button>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -184,7 +225,7 @@ export function VoiceAssistant({
             </div>
 
             {/* Input area */}
-            <div className="border-t p-4 space-y-3">
+            <div className="border-t p-4 space-y-3 shrink-0 bg-background">
               {/* Voice recorder */}
               <div className="flex justify-center">
                 <VoiceRecorder

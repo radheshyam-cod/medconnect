@@ -68,13 +68,27 @@ export class FamilyService {
       throw new NotFoundException('Group not found or unauthorized');
     }
 
-    // Find the user by email
-    const invitedUser = await this.prisma.user.findFirst({
-      where: { email }
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Find the user by email (case-insensitive)
+    let invitedUser = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: cleanEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     if (!invitedUser) {
-      throw new BadRequestException('User with that email not found on MedConnect');
+      // Create a pending placeholder user so family invitations can be sent before they sign up
+      invitedUser = await this.prisma.user.create({
+        data: {
+          clerkId: `pending_${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${cleanEmail}`,
+          email: cleanEmail,
+          fullName: cleanEmail.split('@')[0],
+        },
+      });
     }
 
     if (invitedUser.id === ownerId) {
@@ -92,7 +106,18 @@ export class FamilyService {
     });
 
     if (existing) {
-      throw new BadRequestException('User is already in this family group');
+      if (existing.status === 'ACCEPTED') {
+        throw new BadRequestException('User is already an active member of this family group');
+      }
+      // If already pending or rejected, update the relation and refresh invitation
+      return this.prisma.familyGroupMember.update({
+        where: { id: existing.id },
+        data: {
+          relation,
+          status: 'PENDING',
+          invitedBy: ownerId,
+        }
+      });
     }
 
     return this.prisma.familyGroupMember.create({

@@ -301,10 +301,13 @@ export class VoiceService implements OnModuleDestroy {
     const aiStart = Date.now();
     let aiAnswer: string;
     try {
-      aiAnswer = await this.generateAnswer(userId, userText, conversation.messages);
+      aiAnswer = await this.generateAnswer(userId, userText, conversation.messages, languageCode);
     } catch (error) {
       this.logger.error(`CHAT_AI_FAILED | ${error instanceof Error ? error.message : ''}`);
-      aiAnswer = 'I encountered a technical issue. Please try again.';
+      const isHindi = languageCode === 'hi-IN' || /[\u0900-\u097F]/.test(userText);
+      aiAnswer = isHindi 
+        ? 'मुझे तकनीकी समस्या आ रही है। कृपया पुनः प्रयास करें।'
+        : 'I encountered a technical issue. Please try again.';
     }
     const aiLatencyMs = Date.now() - aiStart;
 
@@ -319,7 +322,9 @@ export class VoiceService implements OnModuleDestroy {
     if (includeAudio) {
       const ttsStart = Date.now();
       try {
-        const ttsResult: GnaniTtsResult = await this.gnaniProvider.textToSpeech(aiAnswer, languageCode);
+        const hasDevanagari = /[\u0900-\u097F]/.test(aiAnswer);
+        const ttsLanguageCode = hasDevanagari ? 'hi-IN' : (languageCode === 'hi-IN' && !hasDevanagari ? 'en-IN' : languageCode);
+        const ttsResult: GnaniTtsResult = await this.gnaniProvider.textToSpeech(aiAnswer, ttsLanguageCode);
         ttsLatencyMs = Date.now() - ttsStart;
         audioBase64 = ttsResult.audioBuffer.toString('base64');
         audioMimeType = 'audio/wav';
@@ -358,10 +363,13 @@ export class VoiceService implements OnModuleDestroy {
     const aiStart = Date.now();
     let aiAnswer: string;
     try {
-      aiAnswer = await this.generateAnswer(userId, userText, conversation.messages);
+      aiAnswer = await this.generateAnswer(userId, userText, conversation.messages, languageCode);
     } catch (error) {
       this.logger.error(`CHAT_AI_FAILED | ${error instanceof Error ? error.message : ''}`);
-      aiAnswer = 'I encountered a technical issue. Please try again.';
+      const isHindi = languageCode === 'hi-IN' || /[\u0900-\u097F]/.test(userText);
+      aiAnswer = isHindi
+        ? 'मुझे तकनीकी समस्या आ रही है। कृपया पुनः प्रयास करें।'
+        : 'I encountered a technical issue. Please try again.';
     }
     const aiLatencyMs = Date.now() - aiStart;
 
@@ -378,7 +386,9 @@ export class VoiceService implements OnModuleDestroy {
         if (!this.gnaniProvider.isAvailable) {
           throw new ServiceUnavailableException('Gnani.ai is not configured.');
         }
-        const ttsResult: GnaniTtsResult = await this.gnaniProvider.textToSpeech(aiAnswer, languageCode);
+        const hasDevanagari = /[\u0900-\u097F]/.test(aiAnswer);
+        const ttsLanguageCode = hasDevanagari ? 'hi-IN' : (languageCode === 'hi-IN' && !hasDevanagari ? 'en-IN' : languageCode);
+        const ttsResult: GnaniTtsResult = await this.gnaniProvider.textToSpeech(aiAnswer, ttsLanguageCode);
         ttsLatencyMs = Date.now() - ttsStart;
         audioBase64 = ttsResult.audioBuffer.toString('base64');
         audioMimeType = 'audio/wav';
@@ -405,6 +415,7 @@ export class VoiceService implements OnModuleDestroy {
     userId: string,
     userQuery: string,
     history: Array<{ role: string; text: string; timestamp?: number }>,
+    languageCode?: string,
   ): Promise<string> {
     if (!this.geminiApiKey) {
       return 'AI features are not configured.';
@@ -421,8 +432,6 @@ export class VoiceService implements OnModuleDestroy {
     }
 
     // ─── Step 1: Build enriched patient context via ContextBuilder ───
-    // buildPatientContext() queries: profile, timeline, meds, labs, docs, summary
-    // compressContext() formats into compact string for AI prompts
     const patientContext = await this.contextBuilder.buildPatientContext(userId);
     const contextStr = this.contextBuilder.compressContext(patientContext);
 
@@ -443,18 +452,27 @@ export class VoiceService implements OnModuleDestroy {
       .map((m) => `${m.role === 'user' ? 'Patient' : 'Assistant'}: ${m.text}`)
       .join('\n');
 
-    // ─── Step 4: Build Q&A prompt ───
+    // ─── Step 4: Build Q&A prompt with Bilingual & Language Mirroring instructions ───
+    const langInstruction = languageCode === 'hi-IN'
+      ? 'The user selected Hindi mode. If they speak or ask in Hindi/Hinglish, reply entirely in clear Hindi (Devanagari script).'
+      : 'Follow strictly language mirroring: if the user asks in Hindi/Hinglish, reply in Hindi (Devanagari script); if in English, reply in English.';
+
     const prompt = [
       'You are a helpful, accurate medical voice assistant for MedConnect India.',
-      'Answer questions based ONLY on the patient data below. Be concise and conversational.',
-      'If the answer is not in the data, say you don\'t have enough information.',
-      'Do NOT make up medical facts or diagnoses. If urgent, advise consulting a doctor.',
+      'CRITICAL LANGUAGE AND RESPONSE RULES:',
+      '1. You MUST understand both English and Hindi (including conversational/Hinglish).',
+      '2. LANGUAGE MIRRORING RULE: If the user asks or speaks in Hindi (whether in Devanagari script like "मेरा ब्लड प्रेशर क्या है?" or Roman script / Hinglish like "Mera blood pressure kya hai?"), you MUST reply ENTIRELY in Hindi using clear Devanagari script (e.g., "आपका ब्लड प्रेशर 120/80 है।") so that the Text-to-Speech engine can read it naturally in Hindi.',
+      '3. If the user asks or speaks in English, you MUST reply entirely in English.',
+      `4. ${langInstruction}`,
+      '5. Provide a complete, clear, and informative answer based ONLY on the patient data below. Do NOT make up facts or diagnoses.',
+      '6. Never truncate or leave sentences or lists incomplete. Ensure all relevant medications, lab tests, or timeline details requested by the user are completely stated.',
+      'If the answer is not in the data, explain clearly in the corresponding language.',
       '',
       `PATIENT DATA:\n${contextStr || 'No health records found.'}`,
       memoryStr ? `\nPATIENT MEMORY:\n${memoryStr}` : '',
       historyStr ? `\nCONVERSATION:\n${historyStr}` : '',
       `\nPATIENT QUESTION: ${sanitizedQuery}`,
-      '\nAnswer concisely based ONLY on the patient data above:',
+      '\nProvide a complete and informative answer based ONLY on the patient data and following the EXACT language mirroring rule above without cutting off:',
     ].join('\n');
 
     this.logger.debug(

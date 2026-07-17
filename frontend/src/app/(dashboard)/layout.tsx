@@ -62,9 +62,10 @@ export default function DashboardLayout({
   useEffect(() => {
     if (isAuthReady && user) {
       api.auth.sync({
-        email: user.primaryEmailAddress?.emailAddress || "",
+        email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || "",
         firstName: user.firstName || "",
         lastName: user.lastName || "",
+        phone: user.primaryPhoneNumber?.phoneNumber || user.phoneNumbers?.[0]?.phoneNumber || "",
       }).catch((err) => console.error("Failed to sync user:", err));
     }
   }, [isAuthReady, user]);
@@ -296,8 +297,8 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        {/* Bottom section: User & Theme */}
-        <div className="border-t border-sidebar-border p-3 space-y-2">
+        {/* Bottom section: User */}
+        <div className="border-t border-sidebar-border p-3">
           <div className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sidebar-accent/50">
             <UserButton afterSignOutUrl="/sign-in" />
             <div className="flex-1 min-w-0">
@@ -308,10 +309,6 @@ export default function DashboardLayout({
                 {user?.primaryEmailAddress?.emailAddress || ""}
               </p>
             </div>
-          </div>
-          <div className="flex items-center justify-between px-3">
-            <span className="text-[10px] text-sidebar-foreground/40">Theme</span>
-            <ModeToggle />
           </div>
         </div>
       </aside>
@@ -345,6 +342,7 @@ export default function DashboardLayout({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <ModeToggle />
             <button className="relative rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
               <Bell className="h-5 w-5" />
               <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-destructive">

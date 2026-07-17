@@ -22,17 +22,43 @@ export class GeminiService {
     }
   }
 
+  private async generateWithFallback(
+    prompt: string,
+    generationConfig?: Record<string, unknown>,
+    models: string[] = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-flash-latest']
+  ): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('AI not initialized');
+    }
+    let lastError: unknown;
+    for (const modelName of models) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig,
+        });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        if (text) {
+          if (modelName !== models[0]) {
+            this.logger.warn(`Successfully generated response using fallback model: ${modelName}`);
+          }
+          return text;
+        }
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(`Model ${modelName} failed (${error instanceof Error ? error.message : String(error)}), trying next fallback...`);
+      }
+    }
+    throw lastError || new Error('All models failed');
+  }
+
   async extractMedicalData(rawText: string, clerkId?: string) {
     if (!this.genAI) {
       return this.fallbackExtraction();
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash',
-        generationConfig: { responseMimeType: 'application/json' },
-      });
-
       // Build enriched prompt with patient context and memory
       let prompt: string;
       if (clerkId) {
@@ -44,8 +70,7 @@ export class GeminiService {
         prompt = this.buildExtractionPrompt(rawText);
       }
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const text = await this.generateWithFallback(prompt, { responseMimeType: 'application/json' });
       return JSON.parse(text);
     } catch (error) {
       this.logger.error('Gemini extraction failed', error);
@@ -59,21 +84,15 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash',
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 500,
-          topP: 0.9,
-        },
+      const text = await this.generateWithFallback(prompt, {
+        temperature: 0.3,
+        maxOutputTokens: 3072,
+        topP: 0.9,
       });
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
       return text || 'I could not generate an answer.';
     } catch (error) {
       this.logger.error('Gemini chat reply generation failed:', error);
-      return 'I encountered a technical issue while processing your question. Please try again.';
+      throw error;
     }
   }
 
@@ -83,11 +102,6 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash',
-        generationConfig: { responseMimeType: 'application/json' },
-      });
-
       let prompt: string;
       if (clerkId) {
         const context = await this.aiContextService.buildTimelineContext(clerkId, extractions);
@@ -97,8 +111,7 @@ export class GeminiService {
         prompt = this.buildTimelinePrompt(extractions);
       }
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const text = await this.generateWithFallback(prompt, { responseMimeType: 'application/json' });
       const parsed = JSON.parse(text);
       return { events: parsed.events || [], model: 'gemini-3.5-flash' };
     } catch (error) {
@@ -113,11 +126,6 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ 
-        model: 'gemini-3.5-flash',
-        generationConfig: { responseMimeType: 'application/json' },
-      });
-
       let prompt: string;
       if (clerkId) {
         const context = await this.aiContextService.buildSummaryContext(clerkId, extractions, type);
@@ -127,8 +135,8 @@ export class GeminiService {
         prompt = this.buildSummaryPrompt(extractions, type);
       }
 
-      const result = await model.generateContent(prompt);
-      return JSON.parse(result.response.text());
+      const text = await this.generateWithFallback(prompt, { responseMimeType: 'application/json' });
+      return JSON.parse(text);
     } catch (error) {
       this.logger.error('Gemini summarization failed', error);
       return { summary: "Summarization failed." };
@@ -145,11 +153,6 @@ export class GeminiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash',
-        generationConfig: { responseMimeType: 'application/json' },
-      });
-
       const prompt = `You are a medical data analyst reviewing a patient's health timeline events from the last month (${periodLabel}).
 Analyze the events below and return a JSON object with this exact structure:
 {
@@ -176,8 +179,7 @@ Focus on:
 Timeline Events:
 ${JSON.stringify(events, null, 2)}`;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const text = await this.generateWithFallback(prompt, { responseMimeType: 'application/json' });
       return JSON.parse(text);
     } catch (error) {
       this.logger.error('Gemini timeline summary failed', error);
