@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser, useClerk } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Activity,
@@ -23,6 +23,7 @@ import {
   Heart,
   Command,
   Loader2,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
@@ -53,6 +54,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -305,16 +307,41 @@ export default function DashboardLayout({
 
         {/* Bottom section: User */}
         <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sidebar-accent/50">
-            <UserButton afterSignOutUrl="/sign-in" />
+          <div className="flex items-center gap-2.5 rounded-lg bg-sidebar-accent/30 border border-sidebar-border/40 p-2.5 transition-all hover:bg-sidebar-accent/60">
+            <div className="shrink-0 pointer-events-none select-none">
+              {user?.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt={user?.fullName || "User Avatar"}
+                  className="h-8 w-8 rounded-lg object-cover border border-sidebar-border/60 shadow-xs"
+                />
+              ) : (
+                <div className="pointer-events-none select-none [&_*]:pointer-events-none [&_.cl-userButtonAvatarBox]:!rounded-lg">
+                  <UserButton
+                    afterSignOutUrl="/sign-in"
+                    appearance={{ elements: { userButtonAvatarBox: "rounded-lg" } }}
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-sidebar-foreground">
-                {user?.fullName || user?.emailAddresses[0]?.emailAddress || "User"}
+              <p className="text-sm font-semibold truncate text-sidebar-foreground">
+                {user?.fullName || user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User"}
               </p>
-              <p className="text-[11px] text-sidebar-foreground/50 truncate">
-                {user?.primaryEmailAddress?.emailAddress || ""}
+              <p
+                className="text-[11px] font-medium text-sidebar-foreground/70 truncate"
+                title={user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || ""}
+              >
+                {user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "No email"}
               </p>
             </div>
+            <button
+              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+              className="shrink-0 rounded-md p-1.5 text-destructive hover:bg-destructive/15 transition-all"
+              title="Log out"
+            >
+              <LogOut className="h-4 w-4 text-destructive" />
+            </button>
           </div>
         </div>
       </aside>

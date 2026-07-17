@@ -33,7 +33,6 @@ export default function SettingsPage() {
 
   const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "User";
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "Not provided";
-  const phone = user?.primaryPhoneNumber?.phoneNumber || user?.phoneNumbers?.[0]?.phoneNumber || "Not provided";
 
   const handleExportFHIR = async () => {
     try {
@@ -55,7 +54,6 @@ export default function SettingsPage() {
       items: [
         { label: "Full Name", value: fullName },
         { label: "Email", value: email },
-        { label: "Phone", value: phone },
       ],
       color: "text-blue-500",
       bg: "bg-blue-100 dark:bg-blue-950/50",
