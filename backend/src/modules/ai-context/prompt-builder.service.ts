@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { MemorySearchResult } from '../memory/interfaces/memory.interface';
-import { PatientAiContext } from './context-builder.service';
 
 @Injectable()
 export class PromptBuilder {
@@ -38,7 +37,7 @@ ${rawText}`);
    * Build an enriched timeline generation prompt with patient memory.
    */
   buildTimelinePrompt(
-    extractions: any[],
+    extractions: Record<string, unknown>[],
     memoryContext: string,
     patientContext: string,
   ): string {
@@ -87,7 +86,7 @@ ${JSON.stringify(extractions)}`);
    * Build an enriched patient summary prompt.
    */
   buildSummaryPrompt(
-    extractions: any[],
+    extractions: Record<string, unknown>[],
     type: 'PATIENT' | 'DOCTOR',
     memoryContext: string,
     patientContext: string,
@@ -171,13 +170,14 @@ ${JSON.stringify(extractions)}`);
    * Compress extractions list to avoid token overflow.
    * Keeps most recent extractions and removes very large raw text.
    */
-  compressExtractions(extractions: any[], maxTokens: number = 30000): any[] {
+  compressExtractions(extractions: Record<string, unknown>[], maxTokens: number = 30000): Record<string, unknown>[] {
     const totalEstimate = this.estimateTokenCount(JSON.stringify(extractions));
     if (totalEstimate <= maxTokens) return extractions;
 
     // Remove rawOcrText from extractions to save tokens
     const compressed = extractions.map((e) => {
-      const { rawOcrText, ...rest } = e;
+      const rest = { ...e };
+      delete rest.rawOcrText;
       return rest;
     });
 

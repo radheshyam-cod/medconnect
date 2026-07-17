@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MemoryLogger } from './memory-logger.service';
 
@@ -9,7 +9,7 @@ interface CacheEntry<T> {
 
 @Injectable()
 export class MemoryCache {
-  private readonly inMemoryCache: Map<string, CacheEntry<any>> = new Map();
+  private readonly inMemoryCache: Map<string, CacheEntry<unknown>> = new Map();
   private readonly defaultTtl: number;
   private readonly maxSize: number;
 

@@ -16,7 +16,7 @@ export class MemoryService {
 
   async storeMemory(
     userId: string,
-    memoryData: Record<string, any>,
+    memoryData: Record<string, unknown>,
     source: string,
   ): Promise<boolean> {
     if (!this.mem0Provider.isAvailable) {
@@ -112,7 +112,7 @@ export class MemoryService {
     userId: string,
     category: string,
     content: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<boolean> {
     if (!this.mem0Provider.isAvailable) return false;
 
@@ -154,7 +154,7 @@ export class MemoryService {
     }
   }
 
-  private mergeMemories(memories: any[]): PatientMemory {
+  private mergeMemories(memories: Array<{ memory?: unknown }>): PatientMemory {
     const merged: PatientMemory = {};
 
     for (const memory of memories) {
@@ -163,8 +163,8 @@ export class MemoryService {
           ? JSON.parse(memory.memory)
           : memory.memory;
 
-        if (parsedMemory) {
-          this.deepMerge(merged, parsedMemory);
+        if (parsedMemory && typeof parsedMemory === 'object') {
+          this.deepMerge(merged as Record<string, unknown>, parsedMemory as Record<string, unknown>);
         }
       } catch {
         // Skip unparseable memories
@@ -175,14 +175,21 @@ export class MemoryService {
     return merged;
   }
 
-  private deepMerge(target: any, source: any): void {
+  private deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): void {
     for (const key of Object.keys(source)) {
       if (source[key] === null || source[key] === undefined) continue;
 
       if (Array.isArray(source[key]) && Array.isArray(target[key])) {
-        target[key] = [...target[key], ...source[key]];
-      } else if (typeof source[key] === 'object' && !Array.isArray(source[key]) && typeof target[key] === 'object' && !Array.isArray(target[key])) {
-        this.deepMerge(target[key], source[key]);
+        target[key] = [...(target[key] as unknown[]), ...(source[key] as unknown[])];
+      } else if (
+        typeof source[key] === 'object' &&
+        !Array.isArray(source[key]) &&
+        typeof target[key] === 'object' &&
+        !Array.isArray(target[key]) &&
+        target[key] !== null &&
+        source[key] !== null
+      ) {
+        this.deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
       } else {
         target[key] = source[key];
       }

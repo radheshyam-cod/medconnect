@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { DocumentType, ProcessingStatus } from "@prisma/client";
+import { DocumentType, ProcessingStatus, Document, Extraction } from "@prisma/client";
 
 export class DocumentResponseDto {
   @ApiProperty()
@@ -38,7 +38,7 @@ export class DocumentResponseDto {
   @ApiProperty()
   updatedAt: Date;
 
-  static fromPrisma(doc: any): DocumentResponseDto {
+  static fromPrisma(doc: Document): DocumentResponseDto {
     return {
       id: doc.id,
       userId: doc.userId,
@@ -58,9 +58,9 @@ export class DocumentResponseDto {
 
 export class DocumentDetailResponseDto extends DocumentResponseDto {
   @ApiPropertyOptional()
-  extraction?: any;
+  extraction?: Extraction;
 
-  static fromPrisma(doc: any): DocumentDetailResponseDto {
+  static fromPrisma(doc: Document & { extractions?: Extraction[] }): DocumentDetailResponseDto {
     return {
       ...DocumentResponseDto.fromPrisma(doc),
       extraction: doc.extractions?.[0] || undefined,

@@ -17,7 +17,7 @@ export class MemoryProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(job: Job<Record<string, unknown>, unknown, string>): Promise<unknown> {
     this.logger.log(`Processing memory job ${job.id} type: ${job.name}`);
 
     if (job.name === 'sync-memory') {
@@ -100,7 +100,7 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncDocumentUpload(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
     return this.memoryService.addStructuredMemory(
       userId,
@@ -116,7 +116,7 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncOcrCompleted(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
     this.memoryLogger.debug('OCR_COMPLETED_SYNC', { extractionId: data.extractionId });
     // The extraction data will be synced separately via extraction_completed
@@ -125,12 +125,12 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncExtraction(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
-    const extractedData = data.extractedData || {};
-    const memoryData: Record<string, any> = {};
+    const extractedData = (data.extractedData as Record<string, unknown>) || {};
+    const memoryData: Record<string, unknown> = {};
 
-    if (extractedData.diseases?.length > 0) {
+    if (Array.isArray(extractedData.diseases) && extractedData.diseases.length > 0) {
       memoryData.medicalConditions = extractedData.diseases.map((d: string) => ({
         name: d,
         confidence: 0.7,
@@ -139,7 +139,7 @@ export class MemoryProcessor extends WorkerHost {
       }));
     }
 
-    if (extractedData.medicines?.length > 0) {
+    if (Array.isArray(extractedData.medicines) && extractedData.medicines.length > 0) {
       memoryData.currentMedicines = extractedData.medicines.map((m: string) => ({
         name: m,
         isActive: true,
@@ -148,15 +148,15 @@ export class MemoryProcessor extends WorkerHost {
       }));
     }
 
-    if (extractedData.doctors?.length > 0) {
+    if (Array.isArray(extractedData.doctors) && extractedData.doctors.length > 0) {
       memoryData.doctors = extractedData.doctors;
     }
 
-    if (extractedData.hospitals?.length > 0) {
+    if (Array.isArray(extractedData.hospitals) && extractedData.hospitals.length > 0) {
       memoryData.hospitals = extractedData.hospitals;
     }
 
-    if (extractedData.labValues?.length > 0) {
+    if (Array.isArray(extractedData.labValues) && extractedData.labValues.length > 0) {
       memoryData.labTrends = [
         {
           testName: 'Extracted Lab Values',
@@ -170,7 +170,7 @@ export class MemoryProcessor extends WorkerHost {
       ];
     }
 
-    if (extractedData.procedures?.length > 0) {
+    if (Array.isArray(extractedData.procedures) && extractedData.procedures.length > 0) {
       memoryData.procedures = extractedData.procedures.map((p: string) => ({
         name: p,
         source: 'document_extraction',
@@ -186,10 +186,10 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncMedication(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
     action: 'created' | 'updated',
   ): Promise<boolean> {
-    const medication = data.medication;
+    const medication = data.medication as Record<string, unknown>;
     if (!medication) return false;
 
     return this.memoryService.addStructuredMemory(
@@ -209,7 +209,7 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncMedicationDeleted(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
     return this.memoryService.addStructuredMemory(
       userId,
@@ -227,10 +227,10 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncLabResult(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
     action: 'created' | 'updated',
   ): Promise<boolean> {
-    const labResult = data.labResult;
+    const labResult = data.labResult as Record<string, unknown>;
     if (!labResult) return false;
 
     return this.memoryService.addStructuredMemory(
@@ -251,9 +251,9 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncTimelineEvent(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
-    const event = data.event;
+    const event = data.event as Record<string, unknown>;
     if (!event) return false;
 
     return this.memoryService.addStructuredMemory(
@@ -274,9 +274,9 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncSummary(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
-    const summary = data.summary;
+    const summary = data.summary as Record<string, unknown>;
     if (!summary) return false;
 
     return this.memoryService.storeMemory(userId, summary, 'ai_summary');
@@ -284,15 +284,15 @@ export class MemoryProcessor extends WorkerHost {
 
   private async syncFhirImport(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
-    const importData = data.importData || data;
+    const importData = (data.importData || data) as Record<string, unknown>;
     return this.memoryService.storeMemory(userId, importData, 'fhir_import');
   }
 
   private async syncManualCorrection(
     userId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<boolean> {
     return this.memoryService.addStructuredMemory(
       userId,

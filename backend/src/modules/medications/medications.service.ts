@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { UpdateMedicationDto } from './dto/update-medication.dto';
 import { PrismaService } from '../database/prisma.service';
@@ -23,7 +24,7 @@ export class MedicationsService {
     const userId = await this.getInternalUserId(clerkId);
     const medication = await this.prisma.medication.create({
       data: {
-        ...(createMedicationDto as any),
+        ...(createMedicationDto as unknown as Prisma.MedicationUncheckedCreateInput),
         userId,
       },
     });
@@ -44,7 +45,7 @@ export class MedicationsService {
 
   async findAll(clerkId: string, options?: { isActive?: boolean }) {
     const userId = await this.getInternalUserId(clerkId);
-    const where: any = { userId };
+    const where: Prisma.MedicationWhereInput = { userId };
     if (options?.isActive !== undefined) {
       where.isActive = options.isActive;
     }
@@ -70,7 +71,7 @@ export class MedicationsService {
 
     const updated = await this.prisma.medication.update({
       where: { id },
-      data: updateMedicationDto as any,
+      data: updateMedicationDto as unknown as Prisma.MedicationUncheckedUpdateInput,
     });
 
     // Sync to memory (fire-and-forget)

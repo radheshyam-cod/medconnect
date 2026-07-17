@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PromptBuilder } from './prompt-builder.service';
+import { MemorySearchResult } from '../memory/interfaces/memory.interface';
 
 describe('PromptBuilder', () => {
   let builder: PromptBuilder;
@@ -66,7 +67,7 @@ describe('PromptBuilder', () => {
       const memories = [
         { id: '1', score: 0.9, memory: 'Patient has diabetes', category: 'conditions', createdAt: '2024-01-01', metadata: {} },
         { id: '2', score: 0.8, memory: 'Patient takes Metformin', category: 'medications', createdAt: '2024-01-01', metadata: {} },
-      ] as any;
+      ] as unknown as MemorySearchResult[];
       
       const result = builder.formatMemoriesForPrompt(memories);
       expect(result).toContain('[Conditions]');

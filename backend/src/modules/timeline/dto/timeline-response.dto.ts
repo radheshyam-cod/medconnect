@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { TimelineEventType, SeverityLevel, TimelineSource } from "@prisma/client";
+import { Timeline, TimelineEventType, SeverityLevel, TimelineSource } from "@prisma/client";
 
 export class TimelineEventDto {
   @ApiProperty()
@@ -41,7 +41,7 @@ export class TimelineEventDto {
   @ApiProperty()
   createdAt: Date;
 
-  static fromPrisma(e: any): TimelineEventDto {
+  static fromPrisma(e: Timeline): TimelineEventDto {
     return {
       id: e.id,
       userId: e.userId,

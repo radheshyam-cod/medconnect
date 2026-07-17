@@ -13,7 +13,7 @@ describe('MemoryCache', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn().mockImplementation((key: string, defaultValue?: any) => {
+            get: jest.fn().mockImplementation((key: string, defaultValue?: unknown) => {
               if (key === 'MEM0_CACHE_TTL') return 300;
               if (key === 'MEM0_CACHE_MAX_SIZE') return 500;
               return defaultValue;

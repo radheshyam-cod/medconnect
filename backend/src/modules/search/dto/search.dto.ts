@@ -8,5 +8,5 @@ export class SearchResultDto {
   title: string;
   description?: string;
   date: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }

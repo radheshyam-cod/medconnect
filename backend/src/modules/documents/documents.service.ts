@@ -181,7 +181,7 @@ export class DocumentsService {
     ]);
 
     return {
-      documents: documents.map((doc: any) => DocumentResponseDto.fromPrisma(doc)),
+      documents: documents.map((doc) => DocumentResponseDto.fromPrisma(doc)),
       total,
     };
   }

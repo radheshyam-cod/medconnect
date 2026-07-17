@@ -7,9 +7,25 @@ import { MemoryLogger } from './memory-logger.service';
 
 describe('MemoryService', () => {
   let service: MemoryService;
-  let mem0Provider: any;
-  let cache: any;
-  let sanitizer: any;
+  let mem0Provider: {
+    isAvailable: boolean;
+    addMemory: jest.Mock;
+    searchMemory: jest.Mock;
+    getAllMemories: jest.Mock;
+    deleteAllUserMemories: jest.Mock;
+  };
+  let cache: {
+    buildKey: jest.Mock;
+    get: jest.Mock;
+    set: jest.Mock;
+    delete: jest.Mock;
+    invalidateByUser: jest.Mock;
+    getSize: jest.Mock;
+  };
+  let sanitizer: {
+    sanitizeMemoryData: jest.Mock;
+    sanitizePatientMemory: jest.Mock;
+  };
 
   beforeEach(async () => {
     mem0Provider = {

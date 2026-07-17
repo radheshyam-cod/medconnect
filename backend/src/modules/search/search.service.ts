@@ -71,7 +71,7 @@ export class SearchService {
 
     const results: SearchResultDto[] = [];
 
-    timelines.forEach((t: any) => results.push({
+    timelines.forEach((t) => results.push({
       id: t.id,
       type: 'TIMELINE',
       title: t.title,
@@ -80,7 +80,7 @@ export class SearchService {
       metadata: { eventType: t.eventType }
     }));
 
-    medications.forEach((m: any) => results.push({
+    medications.forEach((m) => results.push({
       id: m.id,
       type: 'MEDICATION',
       title: m.name,
@@ -89,7 +89,7 @@ export class SearchService {
       metadata: { isActive: m.isActive }
     }));
 
-    labs.forEach((l: any) => results.push({
+    labs.forEach((l) => results.push({
       id: l.id,
       type: 'LAB_RESULT',
       title: l.testName,
@@ -98,7 +98,7 @@ export class SearchService {
       metadata: { isAbnormal: l.isAbnormal }
     }));
 
-    documents.forEach((d: any) => results.push({
+    documents.forEach((d) => results.push({
       id: d.id,
       type: 'DOCUMENT',
       title: d.fileName,

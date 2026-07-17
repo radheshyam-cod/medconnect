@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { MemoryLogger } from './memory-logger.service';
-import { PatientMemory, MedicineInfo, LabTrend, LabValue } from './interfaces/memory.interface';
+import { PatientMemory } from './interfaces/memory.interface';
 
 @Injectable()
 export class MemorySanitizer {
   constructor(private readonly memoryLogger: MemoryLogger) {}
 
-  sanitizeMemoryData(data: Record<string, any>): Record<string, any> {
+  sanitizeMemoryData(data: Record<string, unknown>): Record<string, unknown> {
     const cleaned = this.removeNullValues(data);
     const deduplicated = this.removeDuplicates(cleaned);
     const normalized = this.normalizeValues(deduplicated);
@@ -134,8 +134,8 @@ export class MemorySanitizer {
     return sanitized;
   }
 
-  private removeNullValues(data: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = {};
+  private removeNullValues(data: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       if (value === null || value === undefined) continue;
       if (Array.isArray(value) && value.length === 0) continue;
@@ -145,10 +145,10 @@ export class MemorySanitizer {
       if (Array.isArray(value)) {
         const cleaned = value
           .filter((item) => item !== null && item !== undefined)
-          .map((item) => typeof item === 'object' ? this.removeNullValues(item) : item);
+          .map((item) => typeof item === 'object' && item !== null ? this.removeNullValues(item as Record<string, unknown>) : item);
         if (cleaned.length > 0) result[key] = cleaned;
       } else if (typeof value === 'object') {
-        const cleaned = this.removeNullValues(value);
+        const cleaned = this.removeNullValues(value as Record<string, unknown>);
         if (Object.keys(cleaned).length > 0) result[key] = cleaned;
       } else {
         result[key] = value;
@@ -157,8 +157,8 @@ export class MemorySanitizer {
     return result;
   }
 
-  private removeDuplicates(data: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = { ...data };
+  private removeDuplicates(data: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = { ...data };
     for (const [key, value] of Object.entries(result)) {
       if (Array.isArray(value)) {
         const uniqueItems = this.deduplicateArray(value);
@@ -168,7 +168,7 @@ export class MemorySanitizer {
     return result;
   }
 
-  private deduplicateArray(arr: any[]): any[] {
+  private deduplicateArray(arr: unknown[]): unknown[] {
     const seen = new Set<string>();
     return arr.filter((item) => {
       if (typeof item === 'string') {
@@ -187,8 +187,8 @@ export class MemorySanitizer {
     });
   }
 
-  private normalizeValues(data: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = { ...data };
+  private normalizeValues(data: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = { ...data };
     for (const [key, value] of Object.entries(result)) {
       if (typeof value === 'string') {
         result[key] = value.trim().replace(/\s+/g, ' ');
@@ -197,7 +197,7 @@ export class MemorySanitizer {
     return result;
   }
 
-  private removeOcrArtifacts(data: Record<string, any>): Record<string, any> {
+  private removeOcrArtifacts(data: Record<string, unknown>): Record<string, unknown> {
     const ocrArtifactPatterns = [
       /^[•●■□●▪▸◦◇◆✓✗✘✙✚✛✜✝✞✟✠✡✢✣✤✥✦✧✨✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❄❅❆❇❈❉❊❋]+$/,
       /^[\d\s]{1,3}$/, // Just a few digits
@@ -211,10 +211,10 @@ export class MemorySanitizer {
       /^\d{1,2}\/\d{1,2}\/\d{2,4}$/, // Date-only strings that are OCR artifacts vs real data
     ];
 
-    const result: Record<string, any> = { ...data };
+    const result: Record<string, unknown> = { ...data };
     for (const [key, value] of Object.entries(result)) {
       if (Array.isArray(value)) {
-        result[key] = value.filter((item: any) => {
+        result[key] = value.filter((item) => {
           if (typeof item === 'string') {
             return !ocrArtifactPatterns.some((pattern) => pattern.test(item.trim()));
           }

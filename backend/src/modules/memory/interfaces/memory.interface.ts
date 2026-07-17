@@ -130,14 +130,14 @@ export interface MemorySearchResult {
   score: number;
   memory: string;
   category?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string;
 }
 
 export interface MemorySyncEvent {
   userId: string;
   eventType: MemoryEventType;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   timestamp?: string;
 }
 

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContextBuilder } from './context-builder.service';
+import { ContextBuilder, PatientAiContext } from './context-builder.service';
 import { PrismaService } from '../database/prisma.service';
 
 describe('ContextBuilder', () => {
   let builder: ContextBuilder;
-  let prisma: any;
+  let prisma: Record<string, Record<string, jest.Mock>>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -105,7 +105,7 @@ describe('ContextBuilder', () => {
         recentLabs: [{ id: '1', testName: 'Blood Sugar', value: '140', unit: 'mg/dL', isAbnormal: true, date: '2024-01-15' }],
         recentSummary: { currentConditions: ['Diabetes'], currentMedicines: ['Metformin'], allergies: ['Penicillin'], recentLabs: [], pastSurgeries: [], vitalSigns: [], generatedAt: '2024-01-20' },
         contextTimestamp: '2024-01-20T00:00:00.000Z',
-      } as any;
+      } as unknown as PatientAiContext;
 
       const compressed = builder.compressContext(context);
       expect(compressed).toContain('Patient');
@@ -128,7 +128,7 @@ describe('ContextBuilder', () => {
         recentLabs: [],
         recentSummary: null,
         contextTimestamp: '2024-01-20T00:00:00.000Z',
-      } as any;
+      } as unknown as PatientAiContext;
 
       const compressed = builder.compressContext(context);
       expect(compressed).not.toContain('Patient');

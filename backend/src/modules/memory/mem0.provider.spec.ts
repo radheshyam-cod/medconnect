@@ -22,8 +22,8 @@ jest.mock('mem0ai', () => ({
 }), { virtual: true });
 
 // ─── Helpers ────────────────────────────────────────────────────
-function createConfigMock(overrides: Record<string, any> = {}) {
-  const defaults: Record<string, any> = {
+function createConfigMock(overrides: Record<string, unknown> = {}) {
+  const defaults: Record<string, unknown> = {
     MEM0_API_KEY: 'm0_key_test_api_key_123',
     MEM0_PROJECT_ID: 'proj_test',
     MEM0_ORG_ID: 'org_test',
@@ -35,11 +35,11 @@ function createConfigMock(overrides: Record<string, any> = {}) {
   };
   const config = { ...defaults, ...overrides };
   return {
-    get: jest.fn((key: string, defaultValue?: any) => config[key] ?? defaultValue),
+    get: jest.fn((key: string, defaultValue?: unknown) => config[key] ?? defaultValue),
   };
 }
 
-async function createTestModule(configMock: Record<string, any>): Promise<TestingModule> {
+async function createTestModule(configMock: { get: jest.Mock }): Promise<TestingModule> {
   return Test.createTestingModule({
     providers: [
       Mem0Provider,
@@ -71,6 +71,7 @@ describe('Mem0Provider', () => {
       const configMock = createConfigMock();
       const module = await createTestModule(configMock);
       const p = module.get<Mem0Provider>(Mem0Provider);
+      expect(p).toBeDefined();
 
       expect(configMock.get).toHaveBeenCalledWith('MEM0_API_KEY', '');
       expect(configMock.get).toHaveBeenCalledWith('MEM0_PROJECT_ID', '');
@@ -103,7 +104,7 @@ describe('Mem0Provider', () => {
     });
 
     it('should NOT initialize when API key is missing', async () => {
-      const configMock = { get: jest.fn((_key: string, defaultValue?: any) => defaultValue) };
+      const configMock = { get: jest.fn((_key: string, defaultValue?: unknown) => defaultValue) };
       const module = await createTestModule(configMock);
       provider = module.get<Mem0Provider>(Mem0Provider);
       await provider.onModuleInit();

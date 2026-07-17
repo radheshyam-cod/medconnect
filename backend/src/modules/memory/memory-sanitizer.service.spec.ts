@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MemorySanitizer } from './memory-sanitizer.service';
 import { MemoryLogger } from './memory-logger.service';
+import { PatientMemory } from './interfaces/memory.interface';
 
 describe('MemorySanitizer', () => {
   let sanitizer: MemorySanitizer;
@@ -92,7 +93,7 @@ describe('MemorySanitizer', () => {
           { name: 'Test', confidence: 1.5, source: 'test', lastUpdated: '2024-01-01' },
           { name: 'Test2', confidence: -0.5, source: 'test', lastUpdated: '2024-01-01' },
         ],
-      } as any);
+      } as unknown as PatientMemory);
       expect(result.medicalConditions![0].confidence).toBe(1);
       expect(result.medicalConditions![1].confidence).toBe(0);
     });

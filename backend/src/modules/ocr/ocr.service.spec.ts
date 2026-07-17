@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Document } from '@prisma/client';
 import { OcrService } from './ocr.service';
 import { PrismaService } from '../database/prisma.service';
 import { GeminiService } from '../ai/gemini.service';
@@ -23,7 +24,7 @@ describe('OcrService', () => {
   let service: OcrService;
   let prisma: PrismaService;
   let aiService: GeminiService;
-  let storage: any;
+  let storage: { downloadFile: jest.Mock };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -114,7 +115,7 @@ describe('OcrService', () => {
         storageBucket: 'test-bucket',
         storagePath: 'test-path.pdf',
         fileType: 'application/pdf',
-      } as any);
+      } as unknown as Document);
 
       storage.downloadFile.mockResolvedValue(Buffer.from('dummy-file-content'));
 
@@ -167,7 +168,7 @@ describe('OcrService', () => {
       jest.spyOn(prisma.document, 'findUnique').mockResolvedValue({
         id: 'doc_123',
         userId: 'user_123',
-      } as any);
+      } as unknown as Document);
 
       storage.downloadFile.mockRejectedValue(new Error('Storage failure'));
 

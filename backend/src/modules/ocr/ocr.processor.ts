@@ -11,7 +11,7 @@ export class OcrProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(job: Job<{ documentId?: string }, unknown, string>): Promise<void> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
     if (job.name === 'process-document') {

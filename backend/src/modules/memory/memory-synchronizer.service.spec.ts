@@ -6,7 +6,7 @@ import { MemoryEventType } from './interfaces/memory.interface';
 
 describe('MemorySynchronizer', () => {
   let synchronizer: MemorySynchronizer;
-  let memoryQueue: any;
+  let memoryQueue: { add: jest.Mock };
 
   beforeEach(async () => {
     memoryQueue = {

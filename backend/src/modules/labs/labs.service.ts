@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { CreateLabDto } from './dto/create-lab.dto';
 import { UpdateLabDto } from './dto/update-lab.dto';
 import { PrismaService } from '../database/prisma.service';
@@ -23,7 +24,7 @@ export class LabsService {
     const userId = await this.getInternalUserId(clerkId);
     const labResult = await this.prisma.labResult.create({
       data: {
-        ...(createLabDto as any),
+        ...(createLabDto as unknown as Prisma.LabResultUncheckedCreateInput),
         userId,
       },
     });
@@ -81,7 +82,7 @@ export class LabsService {
 
     const updated = await this.prisma.labResult.update({
       where: { id },
-      data: updateLabDto as any,
+      data: updateLabDto as unknown as Prisma.LabResultUncheckedUpdateInput,
     });
 
     // Sync to memory (fire-and-forget)

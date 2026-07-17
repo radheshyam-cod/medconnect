@@ -4,12 +4,12 @@ import { GnaniApiProvider } from './gnani.provider';
 
 describe('GnaniApiProvider', () => {
   let provider: GnaniApiProvider;
-  let configService: any;
+  let configService: { get: jest.Mock };
 
   beforeEach(async () => {
     configService = {
-      get: jest.fn((key: string, defaultValue?: any) => {
-        const config: Record<string, any> = {
+      get: jest.fn((key: string, defaultValue?: unknown) => {
+        const config: Record<string, unknown> = {
           GNANI_API_KEY: 'test-api-key',
           GNANI_BASE_URL: 'https://api.vachana.ai',
           GNANI_LANGUAGE: 'en-IN',
@@ -41,8 +41,7 @@ describe('GnaniApiProvider', () => {
 
   describe('isAvailable', () => {
     it('should return true when API key is configured', () => {
-      const p = provider as any;
-      expect(p.isAvailable).toBe(true);
+      expect(provider.isAvailable).toBe(true);
     });
 
     it('should return false when API key is missing', async () => {
@@ -55,7 +54,7 @@ describe('GnaniApiProvider', () => {
       }).compile();
 
       const withoutKey = module.get<GnaniApiProvider>(GnaniApiProvider);
-      expect((withoutKey as any).isAvailable).toBe(false);
+      expect(withoutKey.isAvailable).toBe(false);
     });
   });
 
@@ -71,7 +70,7 @@ describe('GnaniApiProvider', () => {
 
       const withoutKey = module.get<GnaniApiProvider>(GnaniApiProvider);
       await expect(
-        (withoutKey as any).speechToText(Buffer.from('test'), 'en-IN', 'audio/wav'),
+        withoutKey.speechToText(Buffer.from('test'), 'en-IN', 'audio/wav'),
       ).rejects.toThrow('Gnani.ai is not configured');
     });
   });
@@ -88,7 +87,7 @@ describe('GnaniApiProvider', () => {
 
       const withoutKey = module.get<GnaniApiProvider>(GnaniApiProvider);
       await expect(
-        (withoutKey as any).textToSpeech('Hello', 'en-IN'),
+        withoutKey.textToSpeech('Hello', 'en-IN'),
       ).rejects.toThrow('Gnani.ai is not configured');
     });
   });

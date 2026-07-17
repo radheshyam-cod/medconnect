@@ -39,7 +39,7 @@ export class FhirService {
       resourceType: 'Bundle',
       type: 'collection',
       timestamp: new Date().toISOString(),
-      entry: [] as any[],
+      entry: [] as Array<{ fullUrl: string; resource: Record<string, unknown> }>,
     };
 
     // 1. Map User to FHIR Patient Resource

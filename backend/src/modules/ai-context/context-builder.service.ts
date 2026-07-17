@@ -200,11 +200,11 @@ export class ContextBuilder {
     // Previous AI summary (if available)
     if (context.recentSummary) {
       const s = context.recentSummary;
-      if (s.currentConditions?.length > 0) {
+      if (Array.isArray(s.currentConditions) && s.currentConditions.length > 0) {
         parts.push(`Conditions (from prev summary): ${(s.currentConditions as string[]).join(', ')}`);
       }
-      if (s.pastSurgeries?.length > 0) {
-        parts.push(`Surgeries: ${(s.pastSurgeries as any[]).map((surg: any) => surg.procedure || surg.name).join(', ')}`);
+      if (Array.isArray(s.pastSurgeries) && s.pastSurgeries.length > 0) {
+        parts.push(`Surgeries: ${(s.pastSurgeries as Array<Record<string, unknown>>).map((surg) => (surg.procedure || surg.name || '') as string).filter(Boolean).join(', ')}`);
       }
     }
 
@@ -274,11 +274,11 @@ export interface LabContext {
 }
 
 export interface SummaryContext {
-  currentConditions: any;
-  currentMedicines: any;
-  allergies: any;
-  recentLabs: any;
-  pastSurgeries: any;
-  vitalSigns: any;
+  currentConditions?: unknown[] | unknown;
+  currentMedicines?: unknown[] | unknown;
+  allergies?: unknown[] | unknown;
+  recentLabs?: unknown[] | unknown;
+  pastSurgeries?: unknown[] | unknown;
+  vitalSigns?: unknown[] | unknown;
   generatedAt: string;
 }

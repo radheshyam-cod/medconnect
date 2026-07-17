@@ -3,11 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import { MemoryLogger } from './memory-logger.service';
 import { MemoryConfig, MemorySearchResult } from './interfaces/memory.interface';
 
-// Dynamic import type for mem0ai
+// Raw item returned by mem0ai
+export interface Mem0RawItem {
+  id?: string;
+  score?: number;
+  memory?: string;
+  category?: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  createdAt?: string;
+}
+
 interface Mem0Client {
-  add(messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, config?: Record<string, any>): Promise<any>;
-  search(query: string, options?: Record<string, any>): Promise<any[]>;
-  getAll(options?: Record<string, any>): Promise<any[]>;
+  add(messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, config?: Record<string, unknown>): Promise<unknown>;
+  search(query: string, options?: Record<string, unknown>): Promise<Mem0RawItem[]>;
+  getAll(options?: Record<string, unknown>): Promise<Mem0RawItem[]>;
   delete(memoryId: string): Promise<void>;
 }
 
@@ -38,13 +48,14 @@ export class Mem0Provider implements OnModuleInit {
     if (this.config.apiKey) {
       try {
         const { default: MemoryClient } = await import('mem0ai');
-        const clientConfig: Record<string, any> = {
+        const clientConfig: Record<string, unknown> = {
           apiKey: this.config.apiKey,
         };
         if (this.config.projectId) clientConfig.projectId = this.config.projectId;
         if (this.config.orgId) clientConfig.orgId = this.config.orgId;
         if (this.config.baseUrl) clientConfig.baseUrl = this.config.baseUrl;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.client = new (MemoryClient as any)(clientConfig) as Mem0Client;
         this.isEnabled = true;
         this.logger.log('Mem0 client initialized successfully');
@@ -65,15 +76,15 @@ export class Mem0Provider implements OnModuleInit {
   async addMemory(
     messages: Array<{ role: string; content: string }>,
     userId: string,
-    metadata?: Record<string, any>,
-  ): Promise<any> {
+    metadata?: Record<string, unknown>,
+  ): Promise<unknown> {
     if (!this.isAvailable) {
       this.memoryLogger.warn('MEMORY_ADD_SKIPPED', { reason: 'Mem0 not configured', userId: this.maskId(userId) });
       return null;
     }
 
     try {
-      const config: Record<string, any> = {
+      const config: Record<string, unknown> = {
         user_id: `patient:${userId}`,
         metadata: {
           ...(metadata || {}),
@@ -117,11 +128,11 @@ export class Mem0Provider implements OnModuleInit {
         resultsCount: results?.length || 0,
       });
 
-      return (results || []).map((r: any) => ({
+      return (results || []).map((r) => ({
         id: r.id || '',
         score: r.score || 0,
         memory: r.memory || '',
-        category: r.category || (r.metadata?.category || null),
+        category: r.category || (r.metadata && typeof r.metadata.category === 'string' ? r.metadata.category : undefined),
         metadata: r.metadata || {},
         createdAt: r.created_at || r.createdAt || new Date().toISOString(),
       }));
@@ -131,7 +142,7 @@ export class Mem0Provider implements OnModuleInit {
     }
   }
 
-  async getAllMemories(userId: string): Promise<any[]> {
+  async getAllMemories(userId: string): Promise<Mem0RawItem[]> {
     if (!this.isAvailable) return [];
 
     try {

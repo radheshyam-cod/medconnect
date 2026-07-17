@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, MinLength, MaxLength, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, IsInt, Min, Max } from 'class-validator';
 
 export class TextToSpeechDto {
   @ApiProperty({

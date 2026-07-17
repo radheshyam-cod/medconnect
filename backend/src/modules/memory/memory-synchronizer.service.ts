@@ -61,7 +61,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onExtractionCompleted(userId: string, extractionId: string, extractedData: Record<string, any>): void {
+  onExtractionCompleted(userId: string, extractionId: string, extractedData: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.EXTRACTION_COMPLETED,
@@ -69,7 +69,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onMedicationCreated(userId: string, medication: Record<string, any>): void {
+  onMedicationCreated(userId: string, medication: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.MEDICATION_CREATED,
@@ -77,7 +77,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onMedicationUpdated(userId: string, medication: Record<string, any>): void {
+  onMedicationUpdated(userId: string, medication: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.MEDICATION_UPDATED,
@@ -93,7 +93,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onLabCreated(userId: string, labResult: Record<string, any>): void {
+  onLabCreated(userId: string, labResult: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.LAB_CREATED,
@@ -101,7 +101,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onLabUpdated(userId: string, labResult: Record<string, any>): void {
+  onLabUpdated(userId: string, labResult: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.LAB_UPDATED,
@@ -109,7 +109,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onTimelineCreated(userId: string, event: Record<string, any>): void {
+  onTimelineCreated(userId: string, event: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.TIMELINE_CREATED,
@@ -117,7 +117,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onSummaryGenerated(userId: string, summary: Record<string, any>): void {
+  onSummaryGenerated(userId: string, summary: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.SUMMARY_GENERATED,
@@ -125,7 +125,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onFhirImported(userId: string, importData: Record<string, any>): void {
+  onFhirImported(userId: string, importData: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.FHIR_IMPORTED,
@@ -133,7 +133,7 @@ export class MemorySynchronizer {
     });
   }
 
-  onManualCorrection(userId: string, entityType: string, entityId: string, changes: Record<string, any>): void {
+  onManualCorrection(userId: string, entityType: string, entityId: string, changes: Record<string, unknown>): void {
     this.triggerSync({
       userId,
       eventType: MemoryEventType.MANUAL_CORRECTION,

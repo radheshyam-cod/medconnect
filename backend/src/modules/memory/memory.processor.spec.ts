@@ -1,28 +1,38 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Job } from 'bullmq';
 import { MemoryProcessor } from './memory.processor';
 import { MemoryService } from './memory.service';
 import { MemoryLogger } from './memory-logger.service';
 import { MemoryEventType } from './interfaces/memory.interface';
 
 // ─── Job Builder Helper ─────────────────────────────────────────
-function createJob(name: string, data: Record<string, any>) {
+function createJob(name: string, data: Record<string, unknown>): Job {
   return {
     id: 'job_123',
     name,
     data,
     timestamp: Date.now(),
-  } as any;
+  } as unknown as Job;
 }
 
 describe('MemoryProcessor', () => {
   let processor: MemoryProcessor;
-  let memoryService: any;
-  let memoryLogger: any;
+  let memoryService: {
+    storeMemory: jest.Mock;
+    addStructuredMemory: jest.Mock;
+    deleteAllUserData: jest.Mock;
+  };
+  let memoryLogger: {
+    log: jest.Mock;
+    warn: jest.Mock;
+    error: jest.Mock;
+    debug: jest.Mock;
+  };
 
   async function buildModule(overrides?: {
-    storeMemory?: any;
-    addStructuredMemory?: any;
-    deleteAllUserData?: any;
+    storeMemory?: jest.Mock;
+    addStructuredMemory?: jest.Mock;
+    deleteAllUserData?: jest.Mock;
   }) {
     memoryService = {
       storeMemory: jest.fn().mockResolvedValue(true),

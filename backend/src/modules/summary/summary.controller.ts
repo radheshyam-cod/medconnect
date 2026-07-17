@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { SummaryService } from './summary.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
