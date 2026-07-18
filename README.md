@@ -232,7 +232,7 @@ graph TB
 
     subgraph Backend ["Backend (NestJS 11)"]
         API[API Gateway<br/>/api/v1]
-        GW[Global Guards<br/>ClerkAuth | Throttler]
+        GW[Global Guards<br/>ClerkAuth + Throttler]
         
         subgraph Modules ["Feature Modules"]
             AUTH[Auth Module]
