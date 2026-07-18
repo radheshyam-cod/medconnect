@@ -131,15 +131,35 @@ export default function SettingsPage() {
   };
 
   const handleRegisterPasskey = async () => {
+    // Check browser WebAuthn support
+    if (!window.PublicKeyCredential) {
+      toast.error("Your browser does not support Passkeys. Please use Chrome, Safari, or Edge.");
+      return;
+    }
+
     setPasskeyStep("scanning");
-    await new Promise((r) => setTimeout(r, 1600));
-    setPasskeyStep("success");
-    await new Promise((r) => setTimeout(r, 800));
-    setPasskeyStep("idle");
-    setShow2FADialog(false);
-    updatePreferences({ twoFactorAuthMethod: "Passkeys / Touch ID", twoFactorAuth: true });
-    toast.success("Two-Factor Authentication enabled (Passkeys / Touch ID)");
+    try {
+      // Use Clerk's built-in passkey registration — triggers OS biometric prompt
+      await user?.createPasskey();
+      setPasskeyStep("success");
+      await new Promise((r) => setTimeout(r, 900));
+      setPasskeyStep("idle");
+      setShow2FADialog(false);
+      updatePreferences({ twoFactorAuthMethod: "Passkeys / Touch ID", twoFactorAuth: true });
+      toast.success("Passkey registered! You can now sign in with Touch ID / Face ID.");
+    } catch (err: any) {
+      setPasskeyStep("idle");
+      const msg = err?.message || "";
+      if (msg.includes("NotAllowedError") || msg.toLowerCase().includes("cancel")) {
+        toast.info("Passkey registration cancelled.");
+      } else if (msg.toLowerCase().includes("not supported") || msg.toLowerCase().includes("unsupported")) {
+        toast.error("Passkeys are not supported on this device or browser.");
+      } else {
+        toast.error(`Passkey registration failed: ${msg || "Please try again."}`);
+      }
+    }
   };
+
 
   const handleActivate2FA = async (methodName: string) => {
     setIsVerifying2FA(true);
