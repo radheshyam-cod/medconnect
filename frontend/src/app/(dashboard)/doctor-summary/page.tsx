@@ -53,6 +53,9 @@ export default function DoctorSummaryPage() {
   const riskFactors = parseList(summary?.riskFactors);
   const recommendations = parseList(summary?.recommendations);
 
+  // Gemini returns a 'summary' narrative string; the frontend expects 'aiNotes'
+  const aiNotes = (summary as any)?.aiNotes || (summary as any)?.summary || null;
+
   const handlePrint = () => window.print();
   const handleDownload = () => {
     // Generate a text version
@@ -114,7 +117,8 @@ export default function DoctorSummaryPage() {
     );
   }
 
-  const summaryDate = formatDate(summary.updatedAt || summary.createdAt);
+  // Gemini returns raw JSON without DB timestamps — fall back to now
+  const summaryDate = formatDate(summary.updatedAt || summary.createdAt || new Date().toISOString());
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 print:pb-0">
@@ -168,9 +172,9 @@ export default function DoctorSummaryPage() {
                 <CardDescription>Summary generated on {summaryDate}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                {summary.aiNotes && (
+                {aiNotes && (
                   <div className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed">
-                    <p className="text-muted-foreground">{summary.aiNotes}</p>
+                    <p className="text-muted-foreground">{aiNotes}</p>
                   </div>
                 )}
               </CardContent>
