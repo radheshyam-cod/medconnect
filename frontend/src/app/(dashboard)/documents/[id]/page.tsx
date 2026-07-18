@@ -60,8 +60,15 @@ export default function DocumentDetailPage() {
   };
 
   const regenerateExtraction = async () => {
-    toast.info("Extraction regeneration requested. This may take a moment.");
-    // In a real app, this would call a backend endpoint to re-process
+    const loadingToast = toast.loading("Queuing extraction regeneration...");
+    try {
+      await api.documents.regenerate(id);
+      toast.success("Extraction regeneration queued! The document status is now PROCESSING.", { id: loadingToast });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to regenerate extraction", { id: loadingToast });
+    }
   };
 
   const handleGenerateTimeline = async () => {
@@ -120,7 +127,12 @@ export default function DocumentDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight">{document.fileName}</h1>
+              <h1
+                className="text-xl font-bold tracking-tight truncate overflow-hidden text-ellipsis whitespace-nowrap block max-w-[450px] sm:max-w-[600px]"
+                title={document.fileName}
+              >
+                {document.fileName}
+              </h1>
               {isCompleted ? (
                 <Badge variant="success" className="text-[10px]">
                   <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
@@ -193,16 +205,27 @@ export default function DocumentDetailPage() {
                 <pre className="whitespace-pre-wrap text-xs text-muted-foreground leading-relaxed font-mono bg-muted/50 rounded-lg p-4 max-h-[300px] overflow-y-auto">
                   {rawText}
                 </pre>
-                {document.ocrConfidence !== undefined && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>Confidence:</span>
-                    <div className="flex-1 max-w-[200px] h-1.5 rounded-full bg-muted overflow-hidden">
+                {(document.ocrConfidence !== undefined || document.status === "COMPLETED" || document.status === "OCR_COMPLETED") && (
+                  <div className="mt-3 flex items-center gap-2.5 text-xs text-muted-foreground">
+                    <span className="font-medium">Confidence:</span>
+                    <div className="flex-1 max-w-[200px] h-2 rounded-full bg-muted/60 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${document.ocrConfidence}%` }}
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                        style={{
+                          width:
+                            document.status === "COMPLETED" || document.status === "OCR_COMPLETED"
+                              ? "100%"
+                              : `${document.ocrConfidence || 0}%`,
+                        }}
                       />
                     </div>
-                    <span className="tabular-nums">{document.ocrConfidence}%</span>
+                    <span className="tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                      {document.ocrConfidence !== undefined && document.ocrConfidence !== null
+                        ? `${document.ocrConfidence}%`
+                        : document.status === "COMPLETED" || document.status === "OCR_COMPLETED"
+                        ? "100%"
+                        : "0%"}
+                    </span>
                   </div>
                 )}
               </CardContent>

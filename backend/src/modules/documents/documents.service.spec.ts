@@ -150,4 +150,27 @@ describe('DocumentsService', () => {
       await expect(service.findOne('clerk_123', 'doc_123')).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('reprocess', () => {
+    it('should update status to PROCESSING and enqueue ocr processing job', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
+      jest.spyOn(prisma.document, 'findFirst').mockResolvedValue({ id: 'doc_123', userId: 'user_123' } as never);
+      jest.spyOn(prisma.document, 'update').mockResolvedValue({ id: 'doc_123', status: 'PROCESSING' } as never);
+
+      const result = await service.reprocess('clerk_123', 'doc_123');
+      expect(result).toEqual({ success: true, message: 'Extraction regeneration queued' });
+      expect(prisma.document.update).toHaveBeenCalledWith({
+        where: { id: 'doc_123' },
+        data: { status: 'PROCESSING' },
+      });
+      expect(ocrQueue.add).toHaveBeenCalledWith('process-document', { documentId: 'doc_123' });
+    });
+
+    it('should throw NotFoundException if document to reprocess not found', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: 'user_123' } as never);
+      jest.spyOn(prisma.document, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.reprocess('clerk_123', 'doc_invalid')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

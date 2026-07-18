@@ -21,6 +21,10 @@ export function useDocument(id: string) {
     queryKey: ["document", id],
     queryFn: () => api.documents.get(id),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && ["PENDING", "PROCESSING", "EXTRACTING"].includes(status) ? 2000 : false;
+    },
   });
 }
 

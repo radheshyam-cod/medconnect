@@ -239,6 +239,27 @@ export class DocumentsService {
     return DocumentResponseDto.fromPrisma(updated);
   }
 
+  async reprocess(clerkId: string, id: string): Promise<{ success: boolean; message: string }> {
+    const userId = await this.getInternalUserId(clerkId);
+    const existing = await this.prisma.document.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.prisma.document.update({
+      where: { id },
+      data: { status: ProcessingStatus.PROCESSING },
+    });
+
+    this.logger.log(`Reprocessing document: ${id}`);
+    await this.ocrQueue.add('process-document', { documentId: id });
+
+    return { success: true, message: 'Extraction regeneration queued' };
+  }
+
   async remove(clerkId: string, id: string): Promise<void> {
     const userId = await this.getInternalUserId(clerkId);
     const document = await this.prisma.document.findFirst({

@@ -300,6 +300,12 @@ export const documents = {
 
   delete: (id: string) => request<void>(`/documents/${id}`, { method: "DELETE" }),
 
+  regenerate: (id: string) =>
+    request<{ success: boolean; message: string }>(`/documents/${id}/regenerate`, { method: "POST" }),
+
+  process: (id: string) =>
+    request<{ success: boolean; message: string }>(`/documents/${id}/process`, { method: "POST" }),
+
   getDownloadUrl: (id: string) => request<{ url: string | null }>(`/documents/${id}/download`),
 };
 

@@ -23,7 +23,7 @@ export class GeminiService {
   }
 
   private async generateWithFallback(
-    prompt: string,
+    prompt: string | Array<unknown>,
     generationConfig?: Record<string, unknown>,
     models: string[] = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-flash-latest']
   ): Promise<string> {
@@ -37,7 +37,9 @@ export class GeminiService {
           model: modelName,
           generationConfig,
         });
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent(
+          prompt as string | Array<string | { inlineData: { data: string; mimeType: string } }>,
+        );
         const text = result.response.text();
         if (text) {
           if (modelName !== models[0]) {
@@ -51,6 +53,27 @@ export class GeminiService {
       }
     }
     throw lastError || new Error('All models failed');
+  }
+
+  async extractTextFromMedia(base64Data: string, mimeType: string, prompt: string): Promise<string> {
+    if (!this.genAI) {
+      return '';
+    }
+    try {
+      const parts = [
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType,
+          },
+        },
+      ];
+      return await this.generateWithFallback(parts);
+    } catch (error) {
+      this.logger.error('Gemini vision extraction failed', error);
+      return '';
+    }
   }
 
   async extractMedicalData(rawText: string, clerkId?: string) {
@@ -218,8 +241,8 @@ ${JSON.stringify(events, null, 2)}`;
   private buildExtractionPrompt(rawText: string): string {
     return `Extract structured medical entities from the following raw OCR text.
 The text may be messy, contain typos, or be poorly formatted. Do your best to identify true medical concepts.
-Return strictly a JSON object with these exact keys, each containing an array of strings. If none found, return an empty array for that key. Normalize dates to ISO format where possible.
-Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures
+Return strictly a JSON object with these exact keys, each containing an array of strings (plus confidence as a float between 0.0 and 1.0 e.g. 0.94 representing overall extraction confidence). If none found, return an empty array for that key. Normalize dates to ISO format where possible.
+Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures, confidence
 Raw OCR Text:
 ${rawText}`;
   }
@@ -282,6 +305,7 @@ ${JSON.stringify(extractions)}`;
       labValues: [],
       dates: [],
       procedures: [],
+      confidence: 0.85,
     };
   }
 }

@@ -77,6 +77,24 @@ export class DocumentsController {
     return this.documentsService.update(clerkId, id, updateDto);
   }
 
+  @Post(":id/process")
+  @ApiOperation({ summary: "Regenerate extraction for a document" })
+  async reprocess(
+    @CurrentUser('id') clerkId: string,
+    @Param("id") id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.documentsService.reprocess(clerkId, id);
+  }
+
+  @Post(":id/regenerate")
+  @ApiOperation({ summary: "Regenerate extraction for a document (alias)" })
+  async regenerateAlias(
+    @CurrentUser('id') clerkId: string,
+    @Param("id") id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.documentsService.reprocess(clerkId, id);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a document" })
   async remove(@CurrentUser('id') clerkId: string, @Param("id") id: string): Promise<void> {

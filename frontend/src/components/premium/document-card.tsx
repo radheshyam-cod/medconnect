@@ -89,8 +89,8 @@ export function DocumentCard({
 
   const cardContent = (
     <div className={cn(
-      "flex items-start gap-3",
-      viewMode === "grid" ? "flex-col" : "flex-row"
+      "flex gap-3 w-full min-w-0 overflow-hidden",
+      viewMode === "grid" ? "flex-col items-stretch" : "flex-row items-start"
     )}>
       {/* File icon */}
       <div className={cn(
@@ -105,13 +105,16 @@ export function DocumentCard({
       </div>
 
       {/* Content */}
-      <div className={cn("flex-1 min-w-0", viewMode === "grid" ? "px-1" : "")}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className={cn("font-medium truncate", viewMode === "grid" ? "text-sm" : "text-sm")}>
+      <div className={cn("flex-1 min-w-0 w-full overflow-hidden", viewMode === "grid" ? "px-1" : "")}>
+        <div className="flex items-start justify-between gap-2 w-full min-w-0 overflow-hidden">
+          <div className="min-w-0 flex-1 w-full overflow-hidden">
+            <p
+              className={cn("font-medium truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full", viewMode === "grid" ? "text-sm" : "text-sm")}
+              title={document.fileName}
+            >
               {document.fileName}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full">
               {formatFileSize(document.fileSize)}
               {document.documentType && ` • ${document.documentType}`}
             </p>
@@ -129,19 +132,34 @@ export function DocumentCard({
           </span>
         </div>
 
-        {/* OCR confidence */}
-        {document.ocrConfidence !== undefined && (
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+        {/* Progress / confidence bar */}
+        {(document.ocrConfidence !== undefined || document.status === "COMPLETED" || document.status === "OCR_COMPLETED") && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 rounded-full bg-muted/60 overflow-hidden">
               <div
                 className={cn(
-                  "h-full rounded-full transition-all",
-                  document.ocrConfidence >= 80 ? "bg-emerald-500" : document.ocrConfidence >= 60 ? "bg-amber-500" : "bg-red-500"
+                  "h-full rounded-full transition-all duration-500",
+                  document.status === "COMPLETED" || document.status === "OCR_COMPLETED" || (document.ocrConfidence && document.ocrConfidence >= 80)
+                    ? "bg-emerald-500"
+                    : document.ocrConfidence && document.ocrConfidence >= 60
+                    ? "bg-amber-500"
+                    : "bg-red-500"
                 )}
-                style={{ width: `${document.ocrConfidence}%` }}
+                style={{
+                  width:
+                    document.status === "COMPLETED" || document.status === "OCR_COMPLETED"
+                      ? "100%"
+                      : `${document.ocrConfidence || 0}%`,
+                }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground">{document.ocrConfidence}%</span>
+            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+              {document.ocrConfidence !== undefined && document.ocrConfidence !== null
+                ? `${document.ocrConfidence}%`
+                : document.status === "COMPLETED" || document.status === "OCR_COMPLETED"
+                ? "100%"
+                : "0%"}
+            </span>
           </div>
         )}
       </div>

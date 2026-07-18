@@ -24,8 +24,8 @@ ${memoryContext}`);
     sections.push(`INSTRUCTIONS
 Extract structured medical entities from the following raw OCR text.
 The text may be messy, contain typos, or be poorly formatted. Do your best to identify true medical concepts.
-Return strictly a JSON object with these exact keys, each containing an array of strings. If none found, return an empty array for that key. Normalize dates to ISO format where possible.
-Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures`);
+Return strictly a JSON object with these exact keys, each containing an array of strings (plus confidence as a float between 0.0 and 1.0 e.g. 0.94 representing overall extraction confidence). If none found, return an empty array for that key. Normalize dates to ISO format where possible.
+Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures, confidence`);
 
     sections.push(`RAW OCR TEXT
 ${rawText}`);

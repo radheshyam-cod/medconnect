@@ -160,7 +160,7 @@ describe('OcrService', () => {
       // 6. Set to COMPLETED
       expect(prisma.document.update).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: 'doc_123' },
-        data: { status: 'COMPLETED' }
+        data: expect.objectContaining({ status: 'COMPLETED' }),
       }));
     });
 

@@ -554,8 +554,13 @@ export function DashboardClient() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/5">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">{doc.fileName}</p>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p
+                        className="text-xs font-medium truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full group-hover:text-primary transition-colors"
+                        title={doc.fileName}
+                      >
+                        {doc.fileName}
+                      </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className={cn(
                           "inline-block h-1.5 w-1.5 rounded-full",
