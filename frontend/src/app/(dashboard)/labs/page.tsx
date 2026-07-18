@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { LabCard } from "@/components/premium/lab-card";
+import { LabTrends } from "@/components/premium/lab-trends";
 import { PageSkeleton } from "@/components/premium/page-skeleton";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -42,7 +43,7 @@ export default function LabsPage() {
   const [page, setPage] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "abnormal">("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "trends">("grid");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["labs", { page, limit: 20 }],
@@ -105,7 +106,25 @@ export default function LabsPage() {
             {cat.label}
           </Badge>
         ))}
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1 ml-auto bg-muted/50 p-1 rounded-lg">
+          <Button
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            size="sm"
+            className="text-xs h-7 px-2"
+            onClick={() => setViewMode("grid")}
+          >
+            Grid
+          </Button>
+          <Button
+            variant={viewMode === "trends" ? "default" : "ghost"}
+            size="sm"
+            className="text-xs h-7 px-2"
+            onClick={() => setViewMode("trends")}
+          >
+            <TrendingUp className="h-3 w-3 mr-1" /> Trends
+          </Button>
+        </div>
+        <div className="flex items-center gap-1 ml-2">
           <Button
             variant="ghost"
             size="sm"
@@ -152,6 +171,13 @@ export default function LabsPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : viewMode === "trends" ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <LabTrends labs={labs} />
+        </motion.div>
       ) : (
         <motion.div
           initial={{ opacity: 0 }}

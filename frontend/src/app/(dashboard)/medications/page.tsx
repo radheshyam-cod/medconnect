@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api-client";
@@ -29,11 +29,26 @@ const FILTERS = [
 
 export default function MedicationsPage() {
   const [filter, setFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
+  const queryClient = useQueryClient();
   
   const { data: medications, isLoading, isError } = useQuery({
     queryKey: ["medications", filter],
     queryFn: () => api.medications.list({ isActive: filter === "ALL" ? undefined : filter === "ACTIVE" }),
   });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
+      api.medications.update(id, { isActive }),
+    onSuccess: () => {
+      // Invalidate medications queries so they refetch the correct lists
+      queryClient.invalidateQueries({ queryKey: ["medications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+
+  const handleToggle = (id: string, isActive: boolean) => {
+    toggleMutation.mutate({ id, isActive });
+  };
 
   const activeMeds = useMemo(() => 
     medications?.filter(m => m.isActive) ?? [], 
@@ -131,7 +146,11 @@ export default function MedicationsPage() {
           className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         >
           {displayMeds.map((med) => (
-            <MedicationCard key={med.id} medication={med} />
+            <MedicationCard 
+              key={med.id} 
+              medication={med} 
+              onToggle={handleToggle} 
+            />
           ))}
         </motion.div>
       )}

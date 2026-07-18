@@ -133,25 +133,26 @@ export function DashboardClient() {
 
   const events = (timelineData as any)?.events || [];
   const timelineEvents = Array.isArray(timelineData) ? timelineData : events;
+  
+  const patientProfile = (stats as any)?.patientProfile;
 
-  // Calculate health score based on data
-  const calculateHealthScore = () => {
-    if (!stats) return 0;
-    let score = 75; // Base score
-    if (stats.activeMedications > 0) score -= 2;
-    if (stats.upcomingRemindersToday > 2) score -= 3;
-    const abnormalLabs = stats.recentLabResults?.filter((l) => l.isAbnormal).length || 0;
-    score -= abnormalLabs * 5;
-    if (stats.documentsThisMonth > 0) score += 3; // Active health tracking
-    return Math.max(0, Math.min(100, score));
-  };
-
-  const healthScore = calculateHealthScore();
+  // Health score now comes dynamically from backend calculation
+  const healthScore = (stats as any)?.healthScore ?? 0;
   const healthTrend = (() => {
     if (healthScore >= 80) return "up" as const;
     if (healthScore >= 60) return "stable" as const;
     return "down" as const;
   })();
+
+  const calculateAge = (dob: string | Date | undefined) => {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    const diff = Date.now() - birthDate.getTime();
+    const ageDate = new Date(diff); 
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  };
+
+  const age = calculateAge(patientProfile?.dateOfBirth);
 
   if (statsLoading && !stats) {
     return <PageSkeleton type="dashboard" />;
@@ -186,12 +187,66 @@ export function DashboardClient() {
         </div>
       </motion.div>
 
-      {/* Health Score + Emergency Row */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <HealthScoreCard score={healthScore} trend={healthTrend} isLoading={statsLoading} />
+      {/* Health Score + Patient Profile + Emergency Row */}
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <div className="md:col-span-1 lg:col-span-1">
+          <HealthScoreCard score={healthScore} trend={healthTrend} isLoading={statsLoading} className="h-full" />
         </div>
-        <EmergencyCard />
+        
+        {/* Patient Profile Quick Look */}
+        <div className="md:col-span-1 lg:col-span-2">
+          <Card className="h-full overflow-hidden border-primary/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <User className="h-4 w-4 text-blue-500" />
+                Patient Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div className="skeleton h-10 w-full rounded-md" />
+                  <div className="skeleton h-10 w-full rounded-md" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Age / Gender</p>
+                    <p className="text-sm font-medium mt-1">
+                      {age ? `${age}y` : "-"} {patientProfile?.gender ? `/ ${patientProfile.gender}` : ""}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Blood Group</p>
+                    <p className="text-sm font-medium mt-1 text-red-500 flex items-center gap-1">
+                      {patientProfile?.bloodGroup || "-"}
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> Allergies
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {patientProfile?.allergies && patientProfile.allergies.length > 0 ? (
+                        patientProfile.allergies.map((allergy: string, i: number) => (
+                          <Badge key={i} variant="destructive" className="text-[10px] px-1.5 py-0">
+                            {allergy}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="md:col-span-1 lg:col-span-1">
+          <EmergencyCard />
+        </div>
       </div>
 
       {/* Stat Cards */}

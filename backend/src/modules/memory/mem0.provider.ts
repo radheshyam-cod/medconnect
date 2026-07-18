@@ -21,8 +21,11 @@ interface Mem0Client {
   delete(memoryId: string): Promise<void>;
 }
 
+import { IContextProvider } from './interfaces/context.interface';
+
 @Injectable()
-export class Mem0Provider implements OnModuleInit {
+export class Mem0Provider implements OnModuleInit, IContextProvider {
+  name = 'Mem0';
   private readonly logger = new Logger(Mem0Provider.name);
   private client: Mem0Client | null = null;
   private config: MemoryConfig;

@@ -18,16 +18,22 @@ export class LabsController {
     @CurrentUser('id') clerkId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('patientId') patientId?: string,
   ) {
     return this.labsService.findAll(clerkId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
+      patientId,
     });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser('id') clerkId: string) {
-    return this.labsService.findOne(id, clerkId);
+  findOne(
+    @Param('id') id: string, 
+    @CurrentUser('id') clerkId: string,
+    @Query('patientId') patientId?: string
+  ) {
+    return this.labsService.findOne(id, clerkId, patientId);
   }
 
   @Patch(':id')

@@ -12,6 +12,8 @@ import { AITimelineSummaryDto } from "./dto/ai-summary-response.dto";
 import { Prisma, TimelineSource } from "@prisma/client";
 import { MemorySynchronizer } from '../memory/memory-synchronizer.service';
 import { MemoryLogger } from '../memory/memory-logger.service';
+import { FamilyService } from '../family/family.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class TimelineService {
@@ -22,6 +24,7 @@ export class TimelineService {
     private readonly aiService: GeminiService,
     private readonly memorySynchronizer: MemorySynchronizer,
     private readonly memoryLogger: MemoryLogger,
+    private readonly familyService: FamilyService,
   ) {}
 
   private async getInternalUserId(clerkId: string) {
@@ -38,7 +41,15 @@ export class TimelineService {
     queryParams: QueryTimelineDto,
   ): Promise<{ events: TimelineEventDto[]; total: number }> {
     const userId = await this.getInternalUserId(clerkId);
-    const where: Prisma.TimelineWhereInput = { userId };
+    let targetUserId = userId;
+
+    if (queryParams.patientId && queryParams.patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, queryParams.patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = queryParams.patientId;
+    }
+
+    const where: Prisma.TimelineWhereInput = { userId: targetUserId };
 
     if (queryParams.eventType) {
       where.eventType = queryParams.eventType;
@@ -80,10 +91,18 @@ export class TimelineService {
   /**
    * Get a single timeline event.
    */
-  async findOne(clerkId: string, id: string): Promise<TimelineEventDto> {
+  async findOne(clerkId: string, id: string, patientId?: string): Promise<TimelineEventDto> {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
+
     const event = await this.prisma.timeline.findFirst({
-      where: { id, userId },
+      where: { id, userId: targetUserId },
     });
 
     if (!event) {
@@ -157,8 +176,15 @@ export class TimelineService {
   /**
    * Get an AI-generated narrative summary of the last month's timeline events.
    */
-  async getAISummary(clerkId: string): Promise<AITimelineSummaryDto> {
+  async getAISummary(clerkId: string, patientId?: string): Promise<AITimelineSummaryDto> {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
 
     const now = new Date();
     const periodStart = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
@@ -166,7 +192,7 @@ export class TimelineService {
 
     const events = await this.prisma.timeline.findMany({
       where: {
-        userId,
+        userId: targetUserId,
         eventDate: {
           gte: periodStart,
           lte: periodEnd,
@@ -194,10 +220,18 @@ export class TimelineService {
   /**
    * Get a summary of timeline events grouped by type and month.
    */
-  async getSummary(clerkId: string): Promise<TimelineSummaryDto> {
+  async getSummary(clerkId: string, patientId?: string): Promise<TimelineSummaryDto> {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
+
     const allEvents = await this.prisma.timeline.findMany({
-      where: { userId },
+      where: { userId: targetUserId },
       orderBy: { eventDate: "desc" },
     });
 

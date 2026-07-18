@@ -39,6 +39,10 @@ describe('OcrService', () => {
             },
             extraction: {
               create: jest.fn(),
+            },
+            medication: {
+              findMany: jest.fn().mockResolvedValue([]),
+              createMany: jest.fn(),
             }
           },
         },

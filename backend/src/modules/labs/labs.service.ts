@@ -5,6 +5,8 @@ import { UpdateLabDto } from './dto/update-lab.dto';
 import { PrismaService } from '../database/prisma.service';
 import { MemorySynchronizer } from '../memory/memory-synchronizer.service';
 import { MemoryLogger } from '../memory/memory-logger.service';
+import { FamilyService } from '../family/family.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class LabsService {
@@ -12,6 +14,7 @@ export class LabsService {
     private readonly prisma: PrismaService,
     private readonly memorySynchronizer: MemorySynchronizer,
     private readonly memoryLogger: MemoryLogger,
+    private readonly familyService: FamilyService,
   ) {}
 
   private async getInternalUserId(clerkId: string) {
@@ -44,19 +47,26 @@ export class LabsService {
     return labResult;
   }
 
-  async findAll(clerkId: string, options: { page: number, limit: number }) {
+  async findAll(clerkId: string, options: { page: number, limit: number, patientId?: string }) {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (options.patientId && options.patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, options.patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = options.patientId;
+    }
     
     const skip = (options.page - 1) * options.limit;
 
     const [results, total] = await Promise.all([
       this.prisma.labResult.findMany({
-        where: { userId },
+        where: { userId: targetUserId },
         orderBy: { date: 'desc' },
         skip,
         take: options.limit,
       }),
-      this.prisma.labResult.count({ where: { userId } })
+      this.prisma.labResult.count({ where: { userId: targetUserId } })
     ]);
 
     return {
@@ -67,10 +77,18 @@ export class LabsService {
     };
   }
 
-  async findOne(id: string, clerkId: string) {
+  async findOne(id: string, clerkId: string, patientId?: string) {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
+
     const lab = await this.prisma.labResult.findFirst({
-      where: { id, userId },
+      where: { id, userId: targetUserId },
     });
     if (!lab) throw new NotFoundException('Lab result not found');
     return lab;

@@ -5,6 +5,8 @@ import { UpdateMedicationDto } from './dto/update-medication.dto';
 import { PrismaService } from '../database/prisma.service';
 import { MemorySynchronizer } from '../memory/memory-synchronizer.service';
 import { MemoryLogger } from '../memory/memory-logger.service';
+import { FamilyService } from '../family/family.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class MedicationsService {
@@ -12,6 +14,7 @@ export class MedicationsService {
     private readonly prisma: PrismaService,
     private readonly memorySynchronizer: MemorySynchronizer,
     private readonly memoryLogger: MemoryLogger,
+    private readonly familyService: FamilyService,
   ) {}
 
   private async getInternalUserId(clerkId: string) {
@@ -43,9 +46,35 @@ export class MedicationsService {
     return medication;
   }
 
-  async findAll(clerkId: string, options?: { isActive?: boolean }) {
+  async findAll(clerkId: string, options?: { isActive?: boolean; patientId?: string }) {
     const userId = await this.getInternalUserId(clerkId);
-    const where: Prisma.MedicationWhereInput = { userId };
+    let targetUserId = userId;
+
+    if (options?.patientId && options.patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, options.patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = options.patientId;
+    }
+
+    // Auto-deactivate medications that have passed their endDate
+    try {
+      await this.prisma.medication.updateMany({
+        where: {
+          userId: targetUserId,
+          isActive: true,
+          endDate: {
+            lt: new Date(),
+          },
+        },
+        data: {
+          isActive: false,
+        },
+      });
+    } catch (error) {
+      // Ignore errors for auto-update
+    }
+
+    const where: Prisma.MedicationWhereInput = { userId: targetUserId };
     if (options?.isActive !== undefined) {
       where.isActive = options.isActive;
     }
@@ -56,10 +85,18 @@ export class MedicationsService {
     });
   }
 
-  async findOne(id: string, clerkId: string) {
+  async findOne(id: string, clerkId: string, patientId?: string) {
     const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
+
     const medication = await this.prisma.medication.findFirst({
-      where: { id, userId },
+      where: { id, userId: targetUserId },
     });
     if (!medication) throw new NotFoundException('Medication not found');
     return medication;

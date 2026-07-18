@@ -444,7 +444,7 @@ export class VoiceService implements OnModuleDestroy {
       .searchRelevantMemories(userId, sanitizedQuery, 10)
       .catch(() => []);
 
-    const memoryStr = this.promptBuilder.formatMemoriesForPrompt(relevantMemories);
+    const memoryStr = this.formatMemoriesLocal(relevantMemories);
 
     // ─── Step 3: Build conversation history ───
     const historyStr = history
@@ -483,5 +483,29 @@ export class VoiceService implements OnModuleDestroy {
 
     // ─── Step 5: Call Gemini using official SDK (`GeminiService`) ───
     return this.geminiService.generateChatReply(prompt, history);
+  }
+
+  private formatMemoriesLocal(memories: any[]): string {
+    if (!memories || memories.length === 0) return '';
+    const parts: string[] = [];
+    const seenCategories = new Set<string>();
+
+    for (const memory of memories) {
+      const category = memory.category || 'general';
+      const label = category.charAt(0).toUpperCase() + category.slice(1);
+
+      if (!seenCategories.has(category)) {
+        seenCategories.add(category);
+        parts.push(`\n[${label}]:`);
+      }
+
+      const content = memory.memory.length > 500
+        ? memory.memory.substring(0, 500) + '...'
+        : memory.memory;
+
+      parts.push(`- ${content.replace(/\n/g, ' ').substring(0, 200)}`);
+    }
+
+    return parts.join('\n');
   }
 }

@@ -1,9 +1,10 @@
 import { Module } from "@nestjs/common";
 import { TimelineController } from "./timeline.controller";
 import { TimelineService } from "./timeline.service";
+import { FamilyModule } from "../family/family.module";
 
 @Module({
-  imports: [],
+  imports: [FamilyModule],
   controllers: [TimelineController],
   providers: [TimelineService],
   exports: [TimelineService],

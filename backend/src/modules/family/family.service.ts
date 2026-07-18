@@ -33,7 +33,7 @@ export class FamilyService {
       include: {
         group: {
           include: {
-            owner: { select: { fullName: true, email: true } }
+            owner: { select: { id: true, fullName: true, email: true } }
           }
         }
       }
@@ -158,5 +158,67 @@ export class FamilyService {
         where: { id: membership.id }
       });
     }
+  }
+
+  async verifyAccess(requestorId: string, targetUserId: string): Promise<boolean> {
+    if (requestorId === targetUserId) return true;
+
+    // Check if requestor is an accepted member in any group owned by targetUserId
+    const membership = await this.prisma.familyGroupMember.findFirst({
+      where: {
+        memberId: requestorId,
+        status: 'ACCEPTED',
+        group: {
+          ownerId: targetUserId,
+        },
+      },
+    });
+
+    return !!membership;
+  }
+
+  async deleteGroup(clerkId: string, groupId: string) {
+    const userId = await this.getInternalUserId(clerkId);
+    
+    const group = await this.prisma.familyGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) throw new NotFoundException('Group not found');
+    if (group.ownerId !== userId) throw new BadRequestException('Only the group owner can delete it');
+
+    return this.prisma.familyGroup.delete({
+      where: { id: groupId }
+    });
+  }
+
+  async removeMember(clerkId: string, groupId: string, memberId: string) {
+    const userId = await this.getInternalUserId(clerkId);
+
+    const group = await this.prisma.familyGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) throw new NotFoundException('Group not found');
+
+    const membership = await this.prisma.familyGroupMember.findUnique({
+      where: {
+        groupId_memberId: {
+          groupId,
+          memberId
+        }
+      }
+    });
+
+    if (!membership) throw new NotFoundException('Member not found in group');
+
+    // Only group owner or the member themselves can remove the member
+    if (group.ownerId !== userId && memberId !== userId) {
+      throw new BadRequestException('Unauthorized to remove this member');
+    }
+
+    return this.prisma.familyGroupMember.delete({
+      where: { id: membership.id }
+    });
   }
 }

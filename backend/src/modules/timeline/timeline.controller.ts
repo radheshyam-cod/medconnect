@@ -32,14 +32,20 @@ export class TimelineController {
 
   @Get("summary")
   @ApiOperation({ summary: "Get timeline summary (counts by type/month)" })
-  async getSummary(@CurrentUser('id') clerkId: string): Promise<TimelineSummaryDto> {
-    return this.timelineService.getSummary(clerkId);
+  async getSummary(
+    @CurrentUser('id') clerkId: string,
+    @Query('patientId') patientId?: string
+  ): Promise<TimelineSummaryDto> {
+    return this.timelineService.getSummary(clerkId, patientId);
   }
 
   @Get("ai-summary")
   @ApiOperation({ summary: "Get AI-generated narrative summary of the last month's health timeline" })
-  async getAISummary(@CurrentUser('id') clerkId: string): Promise<AITimelineSummaryDto> {
-    return this.timelineService.getAISummary(clerkId);
+  async getAISummary(
+    @CurrentUser('id') clerkId: string,
+    @Query('patientId') patientId?: string
+  ): Promise<AITimelineSummaryDto> {
+    return this.timelineService.getAISummary(clerkId, patientId);
   }
 
   @Get(":id")
@@ -47,8 +53,9 @@ export class TimelineController {
   async findOne(
     @CurrentUser('id') clerkId: string,
     @Param("id") id: string,
+    @Query("patientId") patientId?: string
   ): Promise<TimelineEventDto> {
-    return this.timelineService.findOne(clerkId, id);
+    return this.timelineService.findOne(clerkId, id, patientId);
   }
 
   @Post()

@@ -23,4 +23,9 @@ export class QueryTimelineDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  patientId?: string;
 }

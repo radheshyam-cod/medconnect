@@ -16,15 +16,20 @@ export class MedicationsController {
   @Get()
   findAll(
     @CurrentUser('id') clerkId: string,
-    @Query('isActive') isActive?: string
+    @Query('isActive') isActive?: string,
+    @Query('patientId') patientId?: string
   ) {
     const isActiveBool = isActive === undefined ? undefined : isActive === 'true';
-    return this.medicationsService.findAll(clerkId, { isActive: isActiveBool });
+    return this.medicationsService.findAll(clerkId, { isActive: isActiveBool, patientId });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser('id') clerkId: string) {
-    return this.medicationsService.findOne(id, clerkId);
+  findOne(
+    @Param('id') id: string, 
+    @CurrentUser('id') clerkId: string,
+    @Query('patientId') patientId?: string
+  ) {
+    return this.medicationsService.findOne(id, clerkId, patientId);
   }
 
   @Patch(':id')

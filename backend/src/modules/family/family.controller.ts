@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
 import { FamilyService } from './family.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FamilyRelationType } from '@prisma/client';
@@ -54,5 +54,22 @@ export class FamilyController {
     @Body('action') action: 'ACCEPT' | 'REJECT'
   ) {
     return this.familyService.respondToInvite(clerkId, groupId, action);
+  }
+
+  @Delete('groups/:id')
+  deleteGroup(
+    @CurrentUser('id') clerkId: string,
+    @Param('id') groupId: string
+  ) {
+    return this.familyService.deleteGroup(clerkId, groupId);
+  }
+
+  @Delete('groups/:groupId/members/:memberId')
+  removeMember(
+    @CurrentUser('id') clerkId: string,
+    @Param('groupId') groupId: string,
+    @Param('memberId') memberId: string
+  ) {
+    return this.familyService.removeMember(clerkId, groupId, memberId);
   }
 }

@@ -44,11 +44,10 @@ export function MedicationCard({ medication, isLoading, className, onToggle }: M
     >
       <Card
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-md cursor-pointer border",
+          "overflow-hidden transition-all duration-200 hover:shadow-md border",
           medication.isActive ? "hover:border-primary/20" : "opacity-75",
           className,
         )}
-        onClick={() => onToggle?.(medication.id, !medication.isActive)}
       >
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -109,6 +108,27 @@ export function MedicationCard({ medication, isLoading, className, onToggle }: M
                 <div className="mt-2 rounded-lg bg-muted/50 px-2.5 py-1.5">
                   {medication.route && <p className="text-[10px] text-muted-foreground">Route: {medication.route}</p>}
                   {medication.instructions && <p className="text-[10px] text-muted-foreground">{medication.instructions}</p>}
+                </div>
+              )}
+
+              {/* Actions */}
+              {onToggle && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation(); // prevent clicking the card from triggering other events
+                      onToggle(medication.id, !medication.isActive);
+                    }}
+                    className={cn(
+                      "text-xs px-3 py-1.5 rounded-md font-medium transition-colors border",
+                      medication.isActive
+                        ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-900/50 dark:hover:bg-red-900/50"
+                        : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:hover:bg-emerald-900/50"
+                    )}
+                  >
+                    {medication.isActive ? "Stop Medication" : "Resume Medication"}
+                  </button>
                 </div>
               )}
             </div>

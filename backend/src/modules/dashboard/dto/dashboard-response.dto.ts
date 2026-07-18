@@ -6,6 +6,8 @@ export class DashboardStatsDto {
   upcomingRemindersToday: number;
   recentDocuments: RecentDocumentDto[];
   recentLabResults: RecentLabResultDto[];
+  healthScore: number;
+  patientProfile?: any;
 
   constructor(data: DashboardStatsDto) {
     Object.assign(this, data);

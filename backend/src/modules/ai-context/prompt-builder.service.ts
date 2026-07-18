@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MemorySearchResult } from '../memory/interfaces/memory.interface';
+import { MedicalContext } from './dto/medical-context.dto';
 
 @Injectable()
 export class PromptBuilder {
@@ -8,23 +8,21 @@ export class PromptBuilder {
    */
   buildExtractionPrompt(
     rawText: string,
-    memoryContext: string,
-    patientContext: string,
+    medicalContext: MedicalContext,
   ): string {
     const sections: string[] = [];
 
-    sections.push(`PATIENT CONTEXT
-${patientContext}`);
-
-    if (memoryContext) {
-      sections.push(`PATIENT MEMORY
-${memoryContext}`);
+    if (medicalContext) {
+      sections.push(`MEDICAL CONTEXT
+${JSON.stringify(medicalContext, null, 2)}`);
     }
 
     sections.push(`INSTRUCTIONS
 Extract structured medical entities from the following raw OCR text.
 The text may be messy, contain typos, or be poorly formatted. Do your best to identify true medical concepts.
-Return strictly a JSON object with these exact keys, each containing an array of strings (plus confidence as a float between 0.0 and 1.0 e.g. 0.94 representing overall extraction confidence). If none found, return an empty array for that key. Normalize dates to ISO format where possible.
+Return strictly a JSON object with these exact keys. For all keys EXCEPT labValues, return an array of strings.
+For 'labValues', return an array of objects with these keys: "testName" (string), "value" (string), "unit" (string, or null), "isAbnormal" (boolean, true if out of range or flagged).
+If none found, return an empty array for that key. Normalize dates to ISO format where possible. (confidence as a float between 0.0 and 1.0)
 Keys: diseases, medicines, doctors, hospitals, labValues, dates, procedures, confidence`);
 
     sections.push(`RAW OCR TEXT
@@ -38,17 +36,13 @@ ${rawText}`);
    */
   buildTimelinePrompt(
     extractions: Record<string, unknown>[],
-    memoryContext: string,
-    patientContext: string,
+    medicalContext: MedicalContext,
   ): string {
     const sections: string[] = [];
 
-    sections.push(`PATIENT CONTEXT
-${patientContext}`);
-
-    if (memoryContext) {
-      sections.push(`PATIENT MEMORY
-${memoryContext}`);
+    if (medicalContext) {
+      sections.push(`MEDICAL CONTEXT
+${JSON.stringify(medicalContext, null, 2)}`);
     }
 
     sections.push(`INSTRUCTIONS
@@ -88,8 +82,7 @@ ${JSON.stringify(extractions)}`);
   buildSummaryPrompt(
     extractions: Record<string, unknown>[],
     type: 'PATIENT' | 'DOCTOR',
-    memoryContext: string,
-    patientContext: string,
+    medicalContext: MedicalContext,
   ): string {
     const sections: string[] = [];
 
@@ -100,12 +93,9 @@ ${JSON.stringify(extractions)}`);
     sections.push(`ROLE
 ${roleInstruction}`);
 
-    sections.push(`PATIENT CONTEXT
-${patientContext}`);
-
-    if (memoryContext) {
-      sections.push(`PATIENT MEMORY
-${memoryContext}`);
+    if (medicalContext) {
+      sections.push(`MEDICAL CONTEXT
+${JSON.stringify(medicalContext, null, 2)}`);
     }
 
     sections.push(`INSTRUCTIONS
@@ -127,35 +117,6 @@ You MUST return the output strictly as a JSON object with the following exact ke
 ${JSON.stringify(extractions)}`);
 
     return sections.join('\n\n');
-  }
-
-  /**
-   * Format memory search results into a compact string for prompt injection.
-   */
-  formatMemoriesForPrompt(memories: MemorySearchResult[]): string {
-    if (!memories || memories.length === 0) return '';
-
-    const parts: string[] = [];
-    const seenCategories = new Set<string>();
-
-    for (const memory of memories) {
-      const category = memory.category || 'general';
-      const label = category.charAt(0).toUpperCase() + category.slice(1);
-
-      if (!seenCategories.has(category)) {
-        seenCategories.add(category);
-        parts.push(`\n[${label}]:`);
-      }
-
-      // Truncate long memories to save tokens
-      const content = memory.memory.length > 500
-        ? memory.memory.substring(0, 500) + '...'
-        : memory.memory;
-
-      parts.push(`- ${content.replace(/\n/g, ' ').substring(0, 200)}`);
-    }
-
-    return parts.join('\n');
   }
 
   /**
@@ -190,23 +151,5 @@ ${JSON.stringify(extractions)}`);
       Math.floor((maxTokens / compressedEstimate) * compressed.length),
     );
     return compressed.slice(0, maxExtractions);
-  }
-
-  /**
-   * Merge and deduplicate context to avoid repeating information.
-   */
-  mergeContexts(
-    patientContext: string,
-    memoryContext: string,
-  ): string {
-    // Remove duplicate lines between the two contexts
-    const patientLines = new Set(patientContext.split('\n').filter((l) => l.trim()));
-    const memoryLines = memoryContext.split('\n').filter((l) => l.trim());
-
-    const uniqueMemoryLines = memoryLines.filter(
-      (line) => !patientLines.has(line),
-    );
-
-    return [patientContext, ...uniqueMemoryLines].join('\n');
   }
 }

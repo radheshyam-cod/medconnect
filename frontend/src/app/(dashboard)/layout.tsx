@@ -32,6 +32,8 @@ import { VoiceAssistant } from "@/components/voice/VoiceAssistant";
 import { QuickActions } from "@/components/premium/quick-actions";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { PatientProvider } from "@/components/patient-context";
+import { PatientSwitcher } from "@/components/patient-switcher";
 
 const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "D" },
@@ -69,9 +71,13 @@ export default function DashboardLayout({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         phone: user.primaryPhoneNumber?.phoneNumber || user.phoneNumbers?.[0]?.phoneNumber || "",
+      }).then((res) => {
+        if (!res.isOnboarded) {
+          router.push("/onboarding");
+        }
       }).catch((err) => console.error("Failed to sync user:", err));
     }
-  }, [isAuthReady, user]);
+  }, [isAuthReady, user, router]);
 
   // Fetch counts for sidebar badges
   const { data: dashboardStats } = useQuery({
@@ -172,7 +178,9 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <PatientProvider>
+    <div className="flex h-screen w-full items-center justify-center p-2 sm:p-4 lg:p-6">
+      <div className="app-shell flex h-full w-full max-w-[1600px] rounded-2xl overflow-hidden relative border border-white/20 dark:border-white/10 shadow-2xl">
       {/* Command palette overlay */}
       {showSearch && (
         <div className="fixed inset-0 z-50" onClick={() => setShowSearch(false)}>
@@ -229,7 +237,7 @@ export default function DashboardLayout({
       {/* Premium Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-sidebar transition-transform duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-sidebar/70 backdrop-blur-xl transition-transform duration-300 lg:static lg:translate-x-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.4)]",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -347,9 +355,9 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden relative">
         {/* Top header bar */}
-        <header className="flex h-14 items-center border-b bg-background/80 backdrop-blur-md px-4 lg:px-6 sticky top-0 z-30">
+        <header className="flex h-14 items-center border-b bg-background/60 backdrop-blur-xl px-4 lg:px-6 sticky top-0 z-30 shadow-sm">
           <button
             className="mr-3 lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setSidebarOpen(true)}
@@ -388,6 +396,7 @@ export default function DashboardLayout({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <PatientSwitcher />
             <ModeToggle />
             <button className="relative rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
               <Bell className="h-5 w-5" />
@@ -409,6 +418,8 @@ export default function DashboardLayout({
 
       {/* Quick Actions FAB */}
       <QuickActions />
+      </div>
     </div>
+    </PatientProvider>
   );
 }

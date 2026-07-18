@@ -17,6 +17,18 @@ export async function getClerkToken(): Promise<string | null> {
   return null;
 }
 
+// ─── Patient Context Management ───
+
+let _currentPatientId: string | null = null;
+
+export function setPatientId(id: string | null) {
+  _currentPatientId = id;
+}
+
+export function getPatientId(): string | null {
+  return _currentPatientId;
+}
+
 // ─── Types ───
 
 export interface DashboardStats {
@@ -191,8 +203,12 @@ const DEFAULT_TIMEOUT = 30_000; // 30 seconds
 const UPLOAD_TIMEOUT = 120_000; // 2 minutes for uploads
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, ...init } = options;
+  let { params, ...init } = options;
   let url = `${API_BASE}${endpoint}`;
+
+  if (_currentPatientId) {
+    params = { ...params, patientId: _currentPatientId };
+  }
 
   if (params) {
     const searchParams = new URLSearchParams();
@@ -477,6 +493,16 @@ export const family = {
       method: "POST",
       body: JSON.stringify({ action }),
     }),
+
+  removeMember: (groupId: string, memberId: string) =>
+    request<void>(`/family/groups/${groupId}/members/${memberId}`, {
+      method: "DELETE",
+    }),
+
+  deleteGroup: (groupId: string) =>
+    request<void>(`/family/groups/${groupId}`, {
+      method: "DELETE",
+    }),
 };
 
 export const sharing = {
@@ -489,11 +515,25 @@ export const sharing = {
     }),
 
   revokeLink: (id: string) => request<void>(`/sharing/links/${id}`, { method: "DELETE" }),
+
+  getPublicData: (token: string) =>
+    request<any>(`/sharing/public/${token}`, { method: "GET" }),
 };
 
 export const auth = {
   sync: (data: { email: string; firstName?: string; lastName?: string; phone?: string }) =>
-    request<{ success: boolean; userId: string }>("/auth/sync", {
+    request<{ success: boolean; userId: string; isOnboarded: boolean }>("/auth/sync", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  onboard: (data: {
+    dateOfBirth?: string;
+    gender?: string;
+    bloodGroup?: string;
+    allergies?: string[];
+    emergencyContact?: string;
+  }) =>
+    request<{ success: boolean; patientProfile: any }>("/auth/onboard", {
       method: "POST",
       body: JSON.stringify(data),
     }),

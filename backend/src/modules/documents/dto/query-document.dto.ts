@@ -28,4 +28,9 @@ export class QueryDocumentDto extends PaginationDto {
   @IsOptional()
   @IsString()
   to?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  patientId?: string;
 }

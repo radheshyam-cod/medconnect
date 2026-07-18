@@ -131,6 +131,33 @@ export class OcrService {
         }
       }
 
+      // 4c. Auto-create LabResult records from extracted labValues
+      if (structuredData.labValues && Array.isArray(structuredData.labValues) && structuredData.labValues.length > 0) {
+        try {
+          const labValues = structuredData.labValues as any[];
+          // For each labValue, if it's an object with testName and value, create a LabResult
+          const validLabs = labValues.filter(l => typeof l === 'object' && l !== null && l.testName && l.value);
+          
+          if (validLabs.length > 0) {
+            await this.prisma.labResult.createMany({
+              data: validLabs.map((lab) => ({
+                userId: doc.userId,
+                testName: lab.testName,
+                value: String(lab.value),
+                unit: lab.unit || null,
+                isAbnormal: Boolean(lab.isAbnormal),
+                date: doc.documentDate || new Date(), // use doc date if available
+              })),
+            });
+            this.logger.log(
+              `Auto-created ${validLabs.length} lab result(s) from document ${documentId}`,
+            );
+          }
+        } catch(e) {
+          this.logger.warn(`Failed to auto-create lab results for document ${documentId}`, e);
+        }
+      }
+
       await this.prisma.document.update({
         where: { id: documentId },
         data: {

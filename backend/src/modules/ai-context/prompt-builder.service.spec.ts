@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PromptBuilder } from './prompt-builder.service';
-import { MemorySearchResult } from '../memory/interfaces/memory.interface';
+import { MedicalContext } from './dto/medical-context.dto';
 
 describe('PromptBuilder', () => {
   let builder: PromptBuilder;
+  let mockContext: MedicalContext;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -11,6 +12,16 @@ describe('PromptBuilder', () => {
     }).compile();
 
     builder = module.get<PromptBuilder>(PromptBuilder);
+
+    mockContext = {
+      patient: { id: '1', age: 30, gender: 'Male', allergies: [], meta: { version: '1.0', source: 'test', timestamp: '', confidence: 1.0, hash: '' } },
+      conditions: [],
+      medications: [],
+      labs: [],
+      timeline: [],
+      riskFactors: [],
+      importantEvents: [{ id: '1', description: 'Memory context event', meta: { version: '1.0', source: 'test', timestamp: '', confidence: 1.0, hash: '' } }],
+    };
   });
 
   it('should be defined', () => {
@@ -18,62 +29,41 @@ describe('PromptBuilder', () => {
   });
 
   describe('buildExtractionPrompt', () => {
-    it('should include patient context and raw OCR text', () => {
-      const prompt = builder.buildExtractionPrompt('Raw OCR text here', 'Memory context', 'Patient: 30 years Male');
-      expect(prompt).toContain('PATIENT CONTEXT');
-      expect(prompt).toContain('Patient: 30 years Male');
-      expect(prompt).toContain('PATIENT MEMORY');
-      expect(prompt).toContain('Memory context');
+    it('should include medical context and raw OCR text', () => {
+      const prompt = builder.buildExtractionPrompt('Raw OCR text here', mockContext);
+      expect(prompt).toContain('MEDICAL CONTEXT');
+      expect(prompt).toContain('Memory context event');
       expect(prompt).toContain('RAW OCR TEXT');
       expect(prompt).toContain('Raw OCR text here');
     });
 
-    it('should exclude memory section when empty', () => {
-      const prompt = builder.buildExtractionPrompt('Raw text', '', 'Context');
-      expect(prompt).not.toContain('PATIENT MEMORY');
+    it('should handle null medical context gracefully', () => {
+      const prompt = builder.buildExtractionPrompt('Raw text', null as any);
+      expect(prompt).not.toContain('MEDICAL CONTEXT');
     });
   });
 
   describe('buildTimelinePrompt', () => {
     it('should include extractions and event type instructions', () => {
       const extractions = [{ id: 'ext_1', documentId: 'doc_1', diseases: ['Diabetes'] }];
-      const prompt = builder.buildTimelinePrompt(extractions, 'Memory', 'Context');
+      const prompt = builder.buildTimelinePrompt(extractions, mockContext);
       expect(prompt).toContain('VISIT|DIAGNOSIS|MEDICATION|LAB_TEST|PROCEDURE');
       expect(prompt).toContain(JSON.stringify(extractions));
-      expect(prompt).toContain('PATIENT MEMORY');
+      expect(prompt).toContain('MEDICAL CONTEXT');
     });
   });
 
   describe('buildSummaryPrompt', () => {
     it('should include role instruction for doctor summary', () => {
-      const prompt = builder.buildSummaryPrompt([], 'DOCTOR', 'Memory', 'Context');
+      const prompt = builder.buildSummaryPrompt([], 'DOCTOR', mockContext);
       expect(prompt).toContain('concise clinical summary for a physician');
       expect(prompt).toContain('ICD/CPT concepts');
     });
 
     it('should include role instruction for patient summary', () => {
-      const prompt = builder.buildSummaryPrompt([], 'PATIENT', 'Memory', 'Context');
+      const prompt = builder.buildSummaryPrompt([], 'PATIENT', mockContext);
       expect(prompt).toContain('friendly, easy-to-understand health summary');
       expect(prompt).not.toContain('ICD/CPT');
-    });
-  });
-
-  describe('formatMemoriesForPrompt', () => {
-    it('should return empty string for empty memories', () => {
-      expect(builder.formatMemoriesForPrompt([])).toBe('');
-    });
-
-    it('should format memories with category labels', () => {
-      const memories = [
-        { id: '1', score: 0.9, memory: 'Patient has diabetes', category: 'conditions', createdAt: '2024-01-01', metadata: {} },
-        { id: '2', score: 0.8, memory: 'Patient takes Metformin', category: 'medications', createdAt: '2024-01-01', metadata: {} },
-      ] as unknown as MemorySearchResult[];
-      
-      const result = builder.formatMemoriesForPrompt(memories);
-      expect(result).toContain('[Conditions]');
-      expect(result).toContain('[Medications]');
-      expect(result).toContain('Patient has diabetes');
-      expect(result).toContain('Patient takes Metformin');
     });
   });
 
@@ -94,3 +84,4 @@ describe('PromptBuilder', () => {
     });
   });
 });
+

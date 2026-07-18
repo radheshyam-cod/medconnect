@@ -90,8 +90,52 @@ export class SharingService {
       }
     });
 
-    // We can fetch actual resources here, for now just return the link metadata
-    // In a real app, we'd query the Timeline/Document/Medication tables using resourceIds
-    return link;
+    // Fetch comprehensive clinical data for the shared summary
+    const [
+      patientProfile,
+      doctorSummary,
+      medications,
+      timelineEvents,
+      documents,
+      labResults
+    ] = await Promise.all([
+      this.prisma.patientProfile.findUnique({ where: { userId: link.userId } }),
+      this.prisma.doctorSummary.findFirst({
+        where: { userId: link.userId },
+        orderBy: { generatedAt: 'desc' }
+      }),
+      this.prisma.medication.findMany({
+        where: { userId: link.userId, isActive: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+      }),
+      this.prisma.timeline.findMany({
+        where: { userId: link.userId },
+        orderBy: { eventDate: 'desc' },
+        take: 50
+      }),
+      this.prisma.document.findMany({
+        where: { userId: link.userId },
+        orderBy: { documentDate: 'desc' },
+        take: 50
+      }),
+      this.prisma.labResult.findMany({
+        where: { userId: link.userId },
+        orderBy: { date: 'desc' },
+        take: 50
+      })
+    ]);
+
+    return {
+      ...link,
+      clinicalData: {
+        patientProfile,
+        doctorSummary,
+        medications,
+        timelineEvents,
+        documents,
+        labResults
+      }
+    };
   }
 }

@@ -130,8 +130,17 @@ export class DocumentsService {
 
     const allowedUserIds = [userId, ...acceptedGroups.map(g => g.group.ownerId)];
 
+    let targetUserId: string | { in: string[] } = { in: allowedUserIds };
+
+    if (queryParams.patientId) {
+      if (!allowedUserIds.includes(queryParams.patientId)) {
+        throw new BadRequestException("You do not have access to this patient's records");
+      }
+      targetUserId = queryParams.patientId;
+    }
+
     const where: Prisma.DocumentWhereInput = { 
-      userId: { in: allowedUserIds } 
+      userId: targetUserId 
     };
 
     if (queryParams.documentType) {

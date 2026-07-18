@@ -22,6 +22,8 @@ import {
   Plus,
   QrCode,
   Copy,
+  Trash2,
+  LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -83,6 +85,29 @@ export default function FamilyPage() {
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to respond to invitation");
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ groupId, memberId }: { groupId: string; memberId: string }) =>
+      api.family.removeMember(groupId, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["family-groups"] });
+      toast.success("Member removed from group");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to remove member");
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: (groupId: string) => api.family.deleteGroup(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["family-groups"] });
+      toast.success("Family group deleted");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete group");
     },
   });
 
@@ -200,14 +225,30 @@ export default function FamilyPage() {
                             <p className="text-xs text-muted-foreground">{group.members?.length || 0} members</p>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedGroup(selectedGroup === group.id ? null : group.id)}
-                        >
-                          <UserPlus className="h-4 w-4 mr-1.5" />
-                          Invite
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedGroup(selectedGroup === group.id ? null : group.id)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-1.5" />
+                            Invite
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Delete Group"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this family group? This will revoke access for all members.')) {
+                                deleteGroupMutation.mutate(group.id);
+                              }
+                            }}
+                            disabled={deleteGroupMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Members */}
@@ -237,6 +278,20 @@ export default function FamilyPage() {
                                   ) : null}
                                   {m.status}
                                 </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 ml-1 text-muted-foreground hover:text-destructive"
+                                  title="Remove member"
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to remove ${m.member.fullName || m.member.email} from this group?`)) {
+                                      removeMemberMutation.mutate({ groupId: group.id, memberId: m.memberId });
+                                    }
+                                  }}
+                                  disabled={removeMemberMutation.isPending}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                             </div>
                           ))
@@ -359,6 +414,20 @@ export default function FamilyPage() {
                             <CheckCircle2 className="h-3 w-3 mr-1" /> Accepted
                           </Badge>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive ml-1"
+                          title="Leave group"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to leave ${m.group.name}? You will lose access to their records.`)) {
+                              removeMemberMutation.mutate({ groupId: m.groupId, memberId: m.memberId });
+                            }
+                          }}
+                          disabled={removeMemberMutation.isPending}
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </motion.div>
                   ))}
