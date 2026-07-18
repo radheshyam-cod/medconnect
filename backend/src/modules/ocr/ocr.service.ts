@@ -101,6 +101,36 @@ export class OcrService {
         }
       });
 
+      // 4b. Auto-create Medication records from extracted medicines
+      if (structuredData.medicines && structuredData.medicines.length > 0) {
+        // Fetch names of medications already belonging to this user to avoid duplicates
+        const existingMedications = await this.prisma.medication.findMany({
+          where: { userId: doc.userId },
+          select: { name: true },
+        });
+        const existingNames = new Set(
+          existingMedications.map((m) => m.name.toLowerCase().trim()),
+        );
+
+        const newMedicines = (structuredData.medicines as string[]).filter(
+          (name) => name && !existingNames.has(name.toLowerCase().trim()),
+        );
+
+        if (newMedicines.length > 0) {
+          await this.prisma.medication.createMany({
+            data: newMedicines.map((name) => ({
+              userId: doc.userId,
+              name: name.trim(),
+              isActive: true,
+              documentId: doc.id,
+            })),
+          });
+          this.logger.log(
+            `Auto-created ${newMedicines.length} medication(s) from document ${documentId}`,
+          );
+        }
+      }
+
       await this.prisma.document.update({
         where: { id: documentId },
         data: {
