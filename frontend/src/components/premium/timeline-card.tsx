@@ -1,183 +1,160 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Stethoscope, Pill, FlaskConical, Syringe, AlertTriangle, Activity, Calendar, Hospital, Microscope, ChevronDown, ChevronUp, User, MapPin } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
+import { Stethoscope, Pill, FlaskConical, Syringe, AlertTriangle, Activity, Calendar, Hospital, Microscope, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { TimelineEvent } from "@/lib/api-client";
 
 interface TimelineCardProps {
   event: TimelineEvent;
   isLoading?: boolean;
-  className?: string;
   isLast?: boolean;
 }
 
 const eventTypeConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-  VISIT: { icon: Hospital, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-950/50", label: "Visit" },
-  DIAGNOSIS: { icon: Stethoscope, color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-950/50", label: "Diagnosis" },
-  MEDICATION: { icon: Pill, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-950/50", label: "Medication" },
-  LAB_TEST: { icon: FlaskConical, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-950/50", label: "Lab Test" },
-  PROCEDURE: { icon: Microscope, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-950/50", label: "Procedure" },
-  IMAGING: { icon: Activity, color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-100 dark:bg-cyan-950/50", label: "Imaging" },
-  VACCINATION: { icon: Syringe, color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-950/50", label: "Vaccination" },
-  ALLERGY: { icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-100 dark:bg-yellow-950/50", label: "Allergy" },
-  HOSPITALIZATION: { icon: Hospital, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-100 dark:bg-rose-950/50", label: "Hospitalization" },
-  SURGERY: { icon: Microscope, color: "text-red-700 dark:text-red-400", bg: "bg-red-200 dark:bg-red-950/50", label: "Surgery" },
-  OTHER: { icon: Calendar, color: "text-muted-foreground", bg: "bg-muted", label: "Other" },
+  VISIT: { icon: Hospital, color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/20", label: "Visit" },
+  DIAGNOSIS: { icon: Stethoscope, color: "text-red-500", bg: "bg-red-500/10 border-red-500/20", label: "Diagnosis" },
+  MEDICATION: { icon: Pill, color: "text-purple-500", bg: "bg-purple-500/10 border-purple-500/20", label: "Medication" },
+  LAB_TEST: { icon: FlaskConical, color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20", label: "Lab Test" },
+  PROCEDURE: { icon: Microscope, color: "text-orange-500", bg: "bg-orange-500/10 border-orange-500/20", label: "Procedure" },
+  IMAGING: { icon: Activity, color: "text-cyan-500", bg: "bg-cyan-500/10 border-cyan-500/20", label: "Imaging" },
+  VACCINATION: { icon: Syringe, color: "text-green-500", bg: "bg-green-500/10 border-green-500/20", label: "Vaccination" },
+  ALLERGY: { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20", label: "Allergy" },
+  HOSPITALIZATION: { icon: Hospital, color: "text-rose-500", bg: "bg-rose-500/10 border-rose-500/20", label: "Hospitalization" },
+  SURGERY: { icon: Microscope, color: "text-red-600", bg: "bg-red-500/10 border-red-500/20", label: "Surgery" },
+  OTHER: { icon: Calendar, color: "text-muted-foreground", bg: "bg-muted border-border/50", label: "Other" },
 };
 
-const severityBadgeVariant = (severity: string) => {
-  switch (severity) {
-    case "CRITICAL": case "SEVERE": return "destructive" as const;
-    case "MODERATE": return "warning" as const;
-    default: return "secondary" as const;
-  }
-};
-
-export function TimelineCard({ event, isLoading, className, isLast }: TimelineCardProps) {
+export function TimelineCard({ event, isLoading, isLast }: TimelineCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const config = eventTypeConfig[event.eventType] || eventTypeConfig.OTHER;
-  const Icon = config.icon;
-
+  
   if (isLoading) {
     return (
-      <div className="flex gap-4">
-        <div className="skeleton h-12 w-12 shrink-0 rounded-full" />
+      <div className="flex gap-4 md:gap-6 w-full">
+        <div className="w-10 shrink-0" />
+        <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
         <div className="flex-1 space-y-2">
-          <div className="skeleton h-4 w-1/3" />
-          <div className="skeleton h-5 w-3/4" />
-          <div className="skeleton h-3 w-1/2" />
+          <div className="skeleton h-24 w-full rounded-2xl" />
         </div>
       </div>
     );
   }
 
+  const config = eventTypeConfig[event.eventType] || eventTypeConfig.OTHER;
+  const Icon = config.icon;
+  
+  const date = new Date(event.eventDate);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = date.toLocaleString('default', { month: 'short' });
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="relative flex gap-4 md:gap-6 group"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative flex gap-4 md:gap-6 group w-full"
     >
-      {/* Timeline dot + connecting line */}
+      {/* Left Date Column */}
+      <div className="w-8 md:w-10 shrink-0 flex flex-col items-center pt-2">
+        <span className="text-sm md:text-base font-extrabold text-foreground leading-none">{day}</span>
+        <span className="text-[10px] md:text-xs font-semibold text-muted-foreground mt-1">{month}</span>
+      </div>
+
+      {/* Center Icon & Connector */}
       <div className="relative flex flex-col items-center">
         <div className={cn(
-          "relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-background transition-all duration-200 group-hover:scale-110",
+          "relative z-10 flex h-8 w-8 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-full border transition-transform duration-300 group-hover:scale-110",
           config.bg
         )}>
-          <Icon className={cn("h-5 w-5", config.color)} />
+          <Icon className={cn("h-3.5 w-3.5 md:h-4 md:w-4", config.color)} />
         </div>
         {!isLast && (
-          <div className="absolute top-12 bottom-0 w-0.5 bg-gradient-to-b from-border to-border/20" />
+          <div className="absolute top-10 bottom-0 w-[2px] bg-border/40 group-hover:bg-border transition-colors duration-500 -mb-6" />
         )}
       </div>
 
-      {/* Content */}
-      <Card className={cn(
-        "flex-1 transition-all duration-200 hover:shadow-md cursor-pointer",
-        expanded ? "shadow-md" : "",
-        className
-      )} onClick={() => setExpanded(!expanded)}>
-        <CardContent className="p-4">
+      {/* Right Card Content */}
+      <div className="flex-1 pb-6">
+        <div 
+          onClick={() => setExpanded(!expanded)}
+          className="surface-card rounded-2xl border border-border/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer hover:border-border/80"
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              {/* Type & Date row */}
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <Badge variant="secondary" className="text-[10px] h-5 font-medium">
+              
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border", config.bg, config.color)}>
                   {config.label}
-                </Badge>
-                <span className="text-[11px] text-muted-foreground tabular-nums">
-                  {formatDate(event.eventDate)}
                 </span>
+                
                 {event.severity && (
-                  <Badge variant={severityBadgeVariant(event.severity)} className="text-[9px] h-4 px-1.5">
+                  <Badge variant="outline" className={cn(
+                    "text-[9px] h-5 px-2 border",
+                    event.severity === "CRITICAL" || event.severity === "SEVERE" ? "border-red-500/30 text-red-500 bg-red-500/5" :
+                    event.severity === "MODERATE" ? "border-amber-500/30 text-amber-500 bg-amber-500/5" :
+                    "border-emerald-500/30 text-emerald-500 bg-emerald-500/5" // Use emerald for Active/Normal
+                  )}>
                     {event.severity}
                   </Badge>
                 )}
               </div>
 
-              {/* Title */}
-              <h3 className="text-sm font-semibold leading-snug">{event.title}</h3>
+              <h3 className="text-sm font-bold text-foreground leading-snug">{event.title}</h3>
 
-              {/* Description (show first 100 chars if collapsed) */}
               {event.description && (
                 <p className={cn(
-                  "text-xs text-muted-foreground/80 mt-1 leading-relaxed transition-all",
+                  "text-xs text-muted-foreground mt-1.5 leading-relaxed transition-all",
                   !expanded && "line-clamp-2"
                 )}>
                   {event.description}
                 </p>
               )}
 
-              {/* Expanded details */}
-              {expanded && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="mt-3 space-y-2 pt-3 border-t"
-                >
-                  {/* Facility & Doctor */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                    {event.facility && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5 text-blue-500" />
-                        <span>{event.facility}</span>
-                      </div>
-                    )}
-                    {event.doctorName && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="h-3.5 w-3.5 text-primary" />
-                        <span>Dr. {event.doctorName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Diseases & Medicines */}
-                  {event.diseases && event.diseases.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Diagnoses</p>
-                      <div className="flex flex-wrap gap-1">
-                        {event.diseases.map((d, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">{d}</Badge>
-                        ))}
-                      </div>
+              <AnimatePresence>
+                {expanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 12 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-3 pt-3 border-t border-border/40">
+                      {event.facility && (
+                        <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+                          <span className="font-semibold text-foreground">Facility:</span> {event.facility}
+                        </div>
+                      )}
+                      {event.doctorName && (
+                        <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+                          <span className="font-semibold text-foreground">Doctor:</span> Dr. {event.doctorName}
+                        </div>
+                      )}
+                      {event.diseases && event.diseases.length > 0 && (
+                        <div className="text-xs text-muted-foreground font-medium">
+                          <span className="font-semibold text-foreground">Diagnoses:</span> {event.diseases.join(", ")}
+                        </div>
+                      )}
+                      {event.medicines && event.medicines.length > 0 && (
+                        <div className="text-xs text-muted-foreground font-medium">
+                          <span className="font-semibold text-foreground">Medicines:</span> {event.medicines.join(", ")}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {event.medicines && event.medicines.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Medicines</p>
-                      <div className="flex flex-wrap gap-1">
-                        {event.medicines.map((m, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">{m}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {event.procedureName && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-muted-foreground">Procedure:</span>
-                      <span className="font-medium">{event.procedureName}</span>
-                    </div>
-                  )}
-                </motion.div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Expand indicator */}
-            {event.description && event.description.length > 100 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-                className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-            )}
+            {/* Expand indicator chevron */}
+            <div className="shrink-0 p-1 text-muted-foreground transition-colors">
+              <motion.div animate={{ rotate: expanded ? 180 : 0 }}>
+                <ChevronDown className="h-4 w-4" />
+              </motion.div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </motion.div>
   );
 }

@@ -166,18 +166,18 @@ export function DocumentCard({
 
       {/* Actions menu (shown on hover) */}
       {viewMode === "grid" && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="flex gap-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
-              <Eye className="h-3.5 w-3.5" />
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <div className="flex gap-1 bg-background/80 backdrop-blur-md rounded-lg p-0.5 shadow-sm border border-border/50">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted cursor-pointer transition-colors">
+              <Eye className="h-3.5 w-3.5 text-foreground" />
             </div>
             {onDownload && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm" onClick={(e) => { e.preventDefault(); onDownload(document.id); }}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-muted transition-colors rounded-md" onClick={(e) => { e.preventDefault(); onDownload(document.id); }}>
                 <Download className="h-3.5 w-3.5" />
               </Button>
             )}
             {onDelete && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm text-red-500 hover:text-red-600" onClick={(e) => { e.preventDefault(); onDelete(document.id); }}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors rounded-md" onClick={(e) => { e.preventDefault(); onDelete(document.id); }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -192,14 +192,31 @@ export function DocumentCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group relative"
+      className="group relative h-full"
     >
       {viewMode === "list" ? (
-        <Link href={`/documents/${document.id}`}>
-          <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20", className)}>
+        <Link href={`/documents/${document.id}`} className="block h-full">
+          <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20 h-full", className)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
-                {cardContent}
+                <div className="flex-1 flex gap-3 w-full min-w-0 overflow-hidden items-start">
+                  <div className="flex items-center justify-center rounded-lg h-10 w-10 shrink-0 bg-gradient-to-br from-primary/5 to-primary/10">
+                    <FileIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0 w-full overflow-hidden">
+                    <div className="flex items-start justify-between gap-2 w-full min-w-0 overflow-hidden">
+                      <div className="min-w-0 flex-1 w-full overflow-hidden">
+                        <p className="font-medium truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full text-sm">
+                          {document.fileName}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full">
+                          {formatFileSize(document.fileSize)}
+                          {document.documentType && ` • ${document.documentType}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {onDownload && (
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.preventDefault(); onDownload(document.id); }}>
@@ -217,10 +234,52 @@ export function DocumentCard({
           </Card>
         </Link>
       ) : (
-        <Link href={`/documents/${document.id}`}>
-          <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/20", className)}>
-            <CardContent className="p-4 relative">
-              {cardContent}
+        <Link href={`/documents/${document.id}`} className="block h-full">
+          <Card className={cn("overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-border/80 border-border/40 surface-card rounded-2xl h-full flex flex-col", className)}>
+            <CardContent className="p-0 relative flex flex-col h-full">
+              
+              {/* Top Image Preview Area */}
+              <div className="h-[140px] w-full bg-gradient-to-br from-muted/50 to-muted/80 relative flex items-center justify-center overflow-hidden border-b border-border/40 shrink-0 group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
+                {/* Mockup Checkbox Top Left */}
+                <div className="absolute top-3 left-3 w-4 h-4 rounded border border-foreground/20 bg-background shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
+                  {/* Empty checkbox */}
+                </div>
+                
+                {/* Mockup ... Menu Top Right */}
+                <div className="absolute top-3 right-3 w-6 h-6 rounded-md bg-background/50 backdrop-blur-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background transition-colors shadow-sm" onClick={(e) => e.preventDefault()}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </div>
+
+                <FileIcon className="h-16 w-16 text-muted-foreground/30 transition-transform duration-500 group-hover:scale-110 group-hover:text-primary/20" strokeWidth={1} />
+
+                {/* Bottom Left Badge overlay on image */}
+                <div className="absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-lg bg-background/90 backdrop-blur shadow-sm border border-border/50">
+                  <FileIcon className="h-4 w-4 text-primary" />
+                </div>
+              </div>
+
+              {/* Content Area */}
+              <div className="p-4 flex flex-col flex-1">
+                <p className="font-bold text-sm truncate w-full text-foreground/90">
+                  {document.fileName}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                  Uploaded {formatDate(document.createdAt).split(",")[0]} • {formatFileSize(document.fileSize)}
+                </p>
+
+                {/* Tag badges */}
+                <div className="flex flex-wrap gap-1.5 mt-3 mb-4">
+                  <span className="px-2 py-0.5 rounded-sm bg-muted/60 text-muted-foreground text-[9px] font-semibold border border-border/40">
+                    {document.documentType ? document.documentType.replace("_", " ") : "Document"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-sm bg-muted/60 text-muted-foreground text-[9px] font-semibold border border-border/40">
+                    {document.fileType.includes("image") ? "Image" : document.fileType.includes("pdf") ? "PDF" : "File"}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-sm bg-muted/60 text-muted-foreground text-[9px] font-semibold border border-border/40">
+                    +1
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </Link>

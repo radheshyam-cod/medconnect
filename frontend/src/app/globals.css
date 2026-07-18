@@ -5,84 +5,97 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    /* Premium Indigo/Teal Primary */
-    --primary: 255 85% 55%; 
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 255 85% 95%; /* Soft indigo accent */
-    --accent-foreground: 255 85% 35%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 160 84% 39%; /* Premium Teal/Emerald */
+    --popover-foreground: 0 0% 9%;
+    --primary: 238 82% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 238 82% 96%;
+    --accent-foreground: 238 82% 45%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 158 64% 52%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 48 96% 89%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 255 85% 55%;
-    --radius: 1rem; /* Slightly rounder for premium feel */
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 238 82% 65%;
+    --radius: 1.5rem;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 255 85% 55%;
+    --sidebar-primary: 238 82% 65%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 255 85% 95%;
-    --sidebar-accent-foreground: 255 85% 35%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 255 85% 55%;
-    --health-score-good: 160 84% 39%;
+    --sidebar-accent: 238 82% 96%;
+    --sidebar-accent-foreground: 238 82% 45%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 238 82% 65%;
+
+    --health-score-good: 158 64% 52%;
     --health-score-warning: 38 92% 50%;
-    --health-score-bad: 0 84.2% 60.2%;
-    --glass-bg: rgba(255, 255, 255, 0.75);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+    --health-score-bad: 0 84% 60%;
+    --chart-1: 238 82% 65%;
+    --chart-2: 158 64% 52%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 271 91% 65%;
+    --chart-5: 199 89% 48%;
+
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), 0 4px 12px rgba(0, 0, 0, 0.03);
+    --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(0, 0, 0, 0.06);
   }
 
   .dark {
-    --background: 0 0% 0%; /* Pure black */
-    --foreground: 210 40% 98%;
-    --card: 0 0% 4%; /* Very dark grey for cards so they slightly stand out from pure black */
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 255 85% 65%; /* Brighter indigo for dark mode */
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 255 30% 15%;
-    --accent-foreground: 255 85% 85%;
-    --destructive: 0 62.8% 40.6%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 160 84% 45%;
-    --success-foreground: 144 80% 10%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 238 82% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 238 82% 15%;
+    --accent-foreground: 238 82% 85%;
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 158 64% 52%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 48 96% 89%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 255 85% 65%;
-    --sidebar-background: 0 0% 0%; /* Pure black sidebar */
+    --warning-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 238 82% 65%;
+
+    --sidebar-background: 0 0% 0%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 255 85% 65%;
+    --sidebar-primary: 238 82% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 255 30% 15%;
-    --sidebar-accent-foreground: 255 85% 85%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 255 85% 65%;
-    --health-score-good: 160 84% 45%;
+    --sidebar-accent: 238 82% 15%;
+    --sidebar-accent-foreground: 238 82% 85%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 238 82% 65%;
+
+    --health-score-good: 158 64% 52%;
     --health-score-warning: 38 92% 50%;
-    --health-score-bad: 0 84.2% 60.2%;
-    --glass-bg: rgba(10, 15, 30, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --health-score-bad: 0 84% 60%;
+    --chart-1: 238 82% 65%;
+    --chart-2: 158 64% 52%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 271 91% 65%;
+    --chart-5: 199 89% 48%;
+
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -91,89 +104,69 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground min-h-screen relative;
+    @apply text-foreground min-h-screen relative antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    background: linear-gradient(
-      -45deg,
-      hsl(var(--background)),
-      hsl(var(--background)),
-      hsl(240, 100%, 97%),
-      hsl(255, 85%, 95%)
-    );
-    background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
   }
 
   .dark body {
     background: #000000;
   }
 
-  @keyframes gradientBG {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  /* Premium scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.2);
-    border-radius: 3px;
+    background: hsl(var(--muted-foreground) / 0.15);
+    border-radius: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.4);
+    background: hsl(var(--muted-foreground) / 0.3);
   }
 
-  /* Focus ring */
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
-  /* Selection */
   ::selection {
-    background: hsl(var(--primary) / 0.2);
+    background: hsl(var(--primary) / 0.15);
     color: hsl(var(--foreground));
   }
 }
 
 @layer components {
-  /* Glass card effect */
-  .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow), inset 0 1px 1px rgba(255, 255, 255, 0.15);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Clean surface card - the new default */
+  .surface-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
-  
-  .glass-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  .surface-card:hover {
+    box-shadow: var(--card-shadow-hover);
   }
-  
-  .dark .glass-card:hover {
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+
+  /* Subtle glass for specific overlays only */
+  .glass-subtle {
+    background: hsl(var(--background) / 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.3);
   }
 
   /* App Shell Container */
   .app-shell {
-    background: var(--glass-bg);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border) / 0.3);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 0.06);
   }
-  
   .dark .app-shell {
-    box-shadow: 0 24px 80px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 0.5);
+    border-color: hsl(var(--border) / 0.15);
   }
 
   /* Gradient text */
@@ -181,23 +174,15 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/80 to-primary/60;
   }
 
-  /* Animated border gradient */
-  .gradient-border {
-    position: relative;
-    border-radius: var(--radius);
+  /* Health score ring glow */
+  .ring-glow-good {
+    filter: drop-shadow(0 0 12px hsl(var(--health-score-good) / 0.3));
   }
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.3), transparent, hsl(var(--primary) / 0.1));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  .ring-glow-warning {
+    filter: drop-shadow(0 0 12px hsl(var(--health-score-warning) / 0.3));
+  }
+  .ring-glow-bad {
+    filter: drop-shadow(0 0 12px hsl(var(--health-score-bad) / 0.3));
   }
 
   /* Status indicator dots */
@@ -205,35 +190,63 @@
     @apply inline-block h-2 w-2 rounded-full;
   }
   .status-dot-active {
-    @apply bg-emerald-500 shadow-sm shadow-emerald-500/30;
+    @apply bg-emerald-500;
   }
   .status-dot-processing {
-    @apply bg-amber-500 animate-pulse shadow-sm shadow-amber-500/30;
+    @apply bg-amber-500 animate-pulse;
   }
   .status-dot-error {
-    @apply bg-red-500 shadow-sm shadow-red-500/30;
+    @apply bg-red-500;
   }
 
-  /* Skeleton loading premium */
+  /* Shimmer skeleton */
   .skeleton {
-    @apply animate-pulse rounded-md bg-gradient-to-r from-muted via-muted/80 to-muted;
+    @apply rounded-lg bg-gradient-to-r from-muted via-muted/80 to-muted;
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
+  }
+  .dark .skeleton {
+    @apply from-muted/50 via-muted/30 to-muted/50;
   }
 
   @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+
+  /* Hero gradient card */
+  .hero-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.08),
+      hsl(var(--primary) / 0.02) 50%,
+      transparent 80%
+    );
+    border: 1px solid hsl(var(--primary) / 0.1);
+  }
+  .dark .hero-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.12),
+      transparent 70%
+    );
+  }
+
+  /* Mini sparkline placeholder */
+  .sparkline {
+    @apply h-full w-full;
+    background: linear-gradient(90deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.05) 100%);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 30'%3E%3Cpath d='M0 25 L15 20 L30 22 L45 10 L60 15 L75 5 L90 8 L100 12' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+    mask-size: cover;
+    mask-repeat: no-repeat;
+  }
 }
 
 @layer utilities {
-  /* Text balancing */
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Hide scrollbar */
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -242,7 +255,6 @@
     display: none;
   }
 
-  /* Health score colors */
   .health-good { color: hsl(var(--health-score-good)); }
   .health-warning { color: hsl(var(--health-score-warning)); }
   .health-bad { color: hsl(var(--health-score-bad)); }
@@ -252,274 +264,15 @@
   .bg-health-bad { background: hsl(var(--health-score-bad)); }
 }
 
-/* Clerk Google OAuth Button, Email Input & Continue Button Overrides (Exact Same Height & Clean Layout) */
+/* Clerk overrides - kept minimal */
 .cl-socialButtonsBlockButton,
 .cl-formFieldInput,
 .cl-formButtonPrimary {
-  height: 2.5rem !important; /* EXACT same height (40px) across email box, Google button, and Continue button */
+  height: 2.5rem !important;
   min-height: 2.5rem !important;
   max-height: 2.5rem !important;
   border-radius: 0.75rem !important;
 }
-
-.cl-formButtonPrimary {
-  padding: 0 1rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-weight: 600 !important;
-  font-size: 0.875rem !important;
-  margin-top: 0 !important;
-}
-
-/* Decrease vertical spacing between form fields (like email input) and Continue button */
-.cl-form {
-  gap: 0.375rem !important; /* Exactly 6px gap */
-  row-gap: 0.375rem !important;
-}
-
-.cl-formFieldLabelRow,
-.cl-formFieldLabel,
-.cl-formFieldLabelRow label,
-.cl-formFieldLabelRow p,
-.cl-formFieldLabelRow span {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  line-height: 1.15 !important;
-}
-
-/* Completely REMOVE and hide Optional text next to First name / Last name labels */
-.cl-formFieldOptionalHint,
-.cl-formFieldLabel__optional,
-.cl-formFieldLabelRow__optional,
-.cl-formFieldLabelRow [class*="optional" i],
-.cl-formFieldLabel [class*="optional" i],
-.cl-formFieldLabelRow span[class*="Hint" i] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-}
-
-.cl-formFieldRow {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  column-gap: 1rem !important; /* 16px horizontal gap between First Name and Last Name */
-  gap: 0 1rem !important;
-  row-gap: 0 !important;
-}
-
-.cl-formField {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  gap: 0 !important;
-  row-gap: 0 !important;
-}
-
-.cl-formActions {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  gap: 0.25rem !important;
-}
-
-.cl-socialButtonsBlockButton {
-  border: 1px solid #e2e8f0 !important;
-  background-color: #ffffff !important;
-  padding: 0 0.875rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.2s ease !important;
-  position: relative !important;
-}
-
-.cl-socialButtonsBlockButton:hover {
-  border-color: #cbd5e1 !important;
-  background-color: #f8fafc !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08) !important;
-}
-
-.dark .cl-socialButtonsBlockButton {
-  border-color: #1e293b !important;
-  background-color: #0f172a !important;
-}
-
-.dark .cl-socialButtonsBlockButton:hover {
-  border-color: #334155 !important;
-  background-color: #1e293b !important;
-}
-
-.cl-socialButtonsBlockButtonText {
-  font-weight: 600 !important;
-  font-size: 0.875rem !important;
-  color: #0a192f !important;
-  flex: 1 !important;
-  text-align: center !important;
-}
-
-.dark .cl-socialButtonsBlockButtonText {
-  color: #ffffff !important;
-}
-
-.cl-socialButtonsProviderIcon {
-  width: 1.25rem !important;
-  height: 1.25rem !important;
-  flex-shrink: 0 !important;
-}
-
-/* Completely REMOVE and hide default Last used floating badge */
-.cl-badge,
-.cl-socialButtonsBlockButtonBadge,
-.cl-socialButtonsBadge,
-.cl-socialButtonsBlockButton .cl-badge,
-.cl-socialButtonsBlockButton [class*="badge" i],
-.cl-socialButtonsBlockButton [class*="Badge"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  position: absolute !important;
-  pointer-events: none !important;
-}
-
-/* Add exact Recommended mint-green badge inside the button */
-.cl-socialButtonsBlockButton[data-provider="google"]::after,
-.cl-socialButtonsBlockButton::after {
-  content: "Recommended";
-  background-color: #d1fae5;
-  color: #059669;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.15rem 0.5rem;
-  border-radius: 0.375rem;
-  line-height: 1.2;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.dark .cl-socialButtonsBlockButton[data-provider="google"]::after,
-.dark .cl-socialButtonsBlockButton::after {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-}
-
-/* Ensure Clerk auth card merges completely into our outer unified card (transparent, borderless, shadow-free, no extra padding) */
-.cl-rootBox {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 auto !important;
-  display: flex !important;
-  justify-content: center !important;
-}
-
-.cl-card,
-.cl-cardBox,
-.cl-main,
-.cl-signIn-start,
-.cl-signUp-start,
-.cl-internal-b3fm6y,
-.cl-internal-[class*="card"],
-.cl-card > div {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-height: auto !important;
-  padding: 0 !important;
-  margin: 0 auto !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-/* Add clean horizontal margin (side padding) to the form containing input boxes and continue button */
-.cl-form {
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 0 12px !important;
-  box-sizing: border-box !important;
-}
-
-/* Make all other form wrappers and input boxes stretch to full available 100% width inside .cl-form */
-.cl-main,
-.cl-formField,
-.cl-formFieldInput,
-.cl-socialButtonsBlockButton,
-.cl-formButtonPrimary {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* Tighten gap between headerSubtitle and social authentication buttons */
-.cl-header {
-  margin-bottom: 0.25rem !important;
-  padding-bottom: 0 !important;
-}
-
-.cl-headerSubtitle {
-  margin-bottom: 0.15rem !important;
-  padding-bottom: 0 !important;
-}
-
-.cl-socialButtons,
-.cl-dividerRow {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-top: 0 !important;
-  padding: 0 12px !important;
-  box-sizing: border-box !important;
-}
-
-/* Hide Clerk's default footer, footer actions, and internal branding/Development mode banners completely */
-.cl-footer,
-.cl-footerAction,
-.cl-internal-b3fm6y,
-.cl-internal-4x6gjz,
-.cl-internal-[class*="footer"],
-.cl-card > div:last-child:not(.cl-main):not(.cl-footer),
-.cl-card [class*="poweredBy" i],
-.cl-card [class*="Development" i],
-.cl-card a[href*="clerk.com"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-}
-
-/* Add clean envelope mail icon inside Email/Identifier input boxes */
-.cl-formFieldInput[name="identifier"],
-.cl-formFieldInput[name="emailAddress"],
-.cl-formFieldInput[type="email"] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: 1rem center !important;
-  background-size: 1.15rem 1.15rem !important;
-  padding-left: 2.75rem !important;
-}
-
-/* Add right arrow icon to primary Continue submit button */
-.cl-formButtonPrimary {
-  position: relative !important;
-}
-
-.cl-formButtonPrimary::after {
-  content: "→";
-  position: absolute !important;
-  right: 1.25rem !important;
-  font-size: 1.1rem !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-}
+.cl-form { gap: 0.375rem !important; }
+.cl-rootBox { width: 100% !important; }
+.cl-formFieldOptionalHint { display: none !important; }

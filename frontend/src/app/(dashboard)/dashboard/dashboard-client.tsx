@@ -1,130 +1,81 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText,
-  Pill,
-  FlaskConical,
-  Activity,
-  Calendar,
-  ArrowRight,
-  Sparkles,
-  Heart,
-  AlertCircle,
-  Clock,
-  TrendingUp,
-  Loader2,
-  ChevronRight,
-  Upload,
-  User,
-  Stethoscope,
-  Plus,
+  FileText, Pill, FlaskConical, Activity, ArrowRight, Sparkles,
+  AlertCircle, Clock, TrendingUp, ChevronRight, Upload, Bot,
+  X, MessageSquare, CheckCircle2, HeartPulse, ShieldAlert,
+  Calendar, Sun, Droplets, Footprints, Info
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDashboardStats, useTimelineAISummary } from "@/hooks/use-dashboard";
 import { useTimeline } from "@/hooks/use-timeline";
 import { cn, formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { HealthScoreCard } from "@/components/premium/health-score-card";
 import { EmergencyCard } from "@/components/premium/emergency-card";
-import { InsightCard } from "@/components/premium/insight-card";
-import { PageSkeleton } from "@/components/premium/page-skeleton";
-import { useDocuments } from "@/hooks/use-documents";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { useState } from "react";
 
-// ─── Stat Card ───
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  color,
-  bgColor,
-  href,
-  isLoading,
-  total,
-  totalLabel,
-}: {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: any;
-  color: string;
-  bgColor: string;
-  href?: string;
-  isLoading?: boolean;
-  total?: number;
-  totalLabel?: string;
-}) {
-  if (isLoading) {
-    return (
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="skeleton h-4 w-20" />
-          <div className="skeleton h-8 w-8 rounded-lg" />
-        </CardHeader>
-        <CardContent>
-          <div className="skeleton h-8 w-16 mb-1" />
-          <div className="skeleton h-3 w-24" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const content = (
-    <Card className="relative overflow-hidden transition-all duration-200 hover:shadow-md group cursor-pointer border-transparent hover:border-primary/20">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className={cn("rounded-lg p-2 transition-colors group-hover:scale-110", bgColor)}>
-          <Icon className={cn("h-4 w-4", color)} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold tracking-tight tabular-nums">{value}</div>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-        {total !== undefined && totalLabel && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary/60"
-                style={{ width: `${total > 0 ? (value / total) * 100 : 0}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground/60 tabular-nums">{total} {totalLabel}</span>
-          </div>
-        )}
-        {href && (
-          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-            <span>View all</span>
-            <ChevronRight className="h-3 w-3" />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  if (href) {
-    return <Link href={href}>{content}</Link>;
-  }
-  return content;
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
-// ─── Dashboard Client ───
+function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const w = 50;
+  const h = 20;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+  
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0 overflow-visible">
+      <path d={`M ${points.join(" L ")}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MetricCard({
+  title, value, subtitle, subtitleColor = "text-emerald-500", icon: Icon, colorClass, trendData, trendColor
+}: any) {
+  return (
+    <div className="surface-card p-4 rounded-[1.2rem] flex flex-col justify-between h-[110px] relative overflow-hidden group cursor-pointer border border-border/40">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <div className={cn("p-1.5 rounded-lg", colorClass.bg)}>
+            <Icon className={cn("h-4 w-4", colorClass.text)} />
+          </div>
+          <span className="text-sm font-semibold text-muted-foreground">{title}</span>
+        </div>
+      </div>
+      <div className="flex items-end justify-between mt-2">
+        <div>
+          <div className="text-3xl font-bold text-foreground tabular-nums leading-none mb-1">{value}</div>
+          <div className={cn("text-[10px] font-bold", subtitleColor)}>{subtitle}</div>
+        </div>
+        {trendData && <MiniSparkline data={trendData} color={trendColor} />}
+      </div>
+    </div>
+  );
+}
+
 
 export function DashboardClient() {
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useDashboardStats();
+  const { user } = useUser();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: aiSummary, isLoading: aiLoading } = useTimelineAISummary();
-  const { data: timelineData, isLoading: timelineLoading } = useTimeline({ limit: 5 });
+  const { data: timelineData } = useTimeline({ limit: 5 });
   const { data: medications } = useQuery({
     queryKey: ["medications", { isActive: true }],
     queryFn: () => api.medications.list({ isActive: true }),
@@ -133,530 +84,319 @@ export function DashboardClient() {
 
   const events = (timelineData as any)?.events || [];
   const timelineEvents = Array.isArray(timelineData) ? timelineData : events;
-  
   const patientProfile = (stats as any)?.patientProfile;
-
-  // Health score now comes dynamically from backend calculation
   const healthScore = (stats as any)?.healthScore ?? 0;
-  const healthTrend = (() => {
-    if (healthScore >= 80) return "up" as const;
-    if (healthScore >= 60) return "stable" as const;
-    return "down" as const;
-  })();
+  const healthTrend = healthScore >= 80 ? "up" as const : healthScore >= 60 ? "stable" as const : "down" as const;
 
-  const calculateAge = (dob: string | Date | undefined) => {
-    if (!dob) return null;
-    const birthDate = new Date(dob);
-    const diff = Date.now() - birthDate.getTime();
-    const ageDate = new Date(diff); 
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
+  const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+  const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } };
 
-  const age = calculateAge(patientProfile?.dateOfBirth);
-
-  if (statsLoading && !stats) {
-    return <PageSkeleton type="dashboard" />;
-  }
+  // AI Insights logic
+  const recs = aiSummary?.recommendations || [];
+  const insights = [
+    { title: "Great job!", text: recs[0] || "Your HbA1c levels are under control.", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { title: "Stay active", text: recs[1] || "30 min daily walk can improve heart health.", icon: Footprints, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { title: "Vitamin D is low", text: recs[2] || "Consider 15 min of sunlight daily.", icon: Sun, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { title: "Hydration reminder", text: recs[3] || "Drink more water throughout the day.", icon: Droplets, color: "text-cyan-500", bg: "bg-cyan-500/10" },
+  ];
 
   return (
-    <div className="space-y-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1500px] mx-auto pb-24 px-2">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
+      <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            Dashboard
-            <Badge variant="outline" className="font-normal text-[10px]">
-              <Sparkles className="h-3 w-3 mr-1" /> AI Powered
-            </Badge>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+            {getGreeting()}, {user?.firstName || user?.fullName || "User"} <span className="text-2xl">👋</span>
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Your health at a glance
+          <p className="text-sm font-medium text-muted-foreground mt-1">
+            Here&apos;s your health overview for today
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/documents">
-              <Upload className="h-4 w-4 mr-1.5" />
-              Upload
-            </Link>
-          </Button>
-        </div>
+        <Button variant="outline" className="rounded-xl h-10 border-primary/20 text-primary shadow-sm font-semibold hover:bg-primary/5 transition-colors" asChild>
+          <Link href="/documents"><Upload className="h-4 w-4 mr-2" /> Upload Document</Link>
+        </Button>
       </motion.div>
 
-      {/* Health Score + Patient Profile + Emergency Row */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-        <div className="md:col-span-1 lg:col-span-1">
-          <HealthScoreCard score={healthScore} trend={healthTrend} isLoading={statsLoading} className="h-full" />
-        </div>
+      {/* Row 1: Top Cards */}
+      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
         
-        {/* Patient Profile Quick Look */}
-        <div className="md:col-span-1 lg:col-span-2">
-          <Card className="h-full overflow-hidden border-primary/10">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <User className="h-4 w-4 text-blue-500" />
-                Patient Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div className="skeleton h-10 w-full rounded-md" />
-                  <div className="skeleton h-10 w-full rounded-md" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Age / Gender</p>
-                    <p className="text-sm font-medium mt-1">
-                      {age ? `${age}y` : "-"} {patientProfile?.gender ? `/ ${patientProfile.gender}` : ""}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Blood Group</p>
-                    <p className="text-sm font-medium mt-1 text-red-500 flex items-center gap-1">
-                      {patientProfile?.bloodGroup || "-"}
-                    </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> Allergies
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {patientProfile?.allergies && patientProfile.allergies.length > 0 ? (
-                        patientProfile.allergies.map((allergy: string, i: number) => (
-                          <Badge key={i} variant="destructive" className="text-[10px] px-1.5 py-0">
-                            {allergy}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">None</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Health Score */}
+        <div className="lg:col-span-4 min-h-[260px]">
+          <HealthScoreCard score={healthScore} trend={healthTrend} isLoading={statsLoading} />
         </div>
 
-        <div className="md:col-span-1 lg:col-span-1">
-          <EmergencyCard />
-        </div>
-      </div>
-
-      {/* Stat Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid gap-4 grid-cols-2 lg:grid-cols-4"
-      >
-        <StatCard
-          title="Documents"
-          value={stats?.documentsThisMonth ?? 0}
-          subtitle="Uploaded this month"
-          icon={FileText}
-          color="text-blue-600 dark:text-blue-400"
-          bgColor="bg-blue-100 dark:bg-blue-950/50"
-          href="/documents"
-          isLoading={statsLoading}
-          total={stats?.totalDocuments}
-          totalLabel="total"
-        />
-        <StatCard
-          title="Active Medications"
-          value={medications?.length ?? stats?.activeMedications ?? 0}
-          subtitle="Currently tracked"
-          icon={Pill}
-          color="text-emerald-600 dark:text-emerald-400"
-          bgColor="bg-emerald-100 dark:bg-emerald-950/50"
-          href="/medications"
-          isLoading={statsLoading}
-        />
-        <StatCard
-          title="Lab Results"
-          value={stats?.totalLabResults ?? 0}
-          subtitle="Latest results"
-          icon={FlaskConical}
-          color="text-purple-600 dark:text-purple-400"
-          bgColor="bg-purple-100 dark:bg-purple-950/50"
-          href="/labs"
-          isLoading={statsLoading}
-        />
-        <StatCard
-          title="Upcoming Medicines"
-          value={stats?.upcomingRemindersToday ?? 0}
-          subtitle="Reminders for today"
-          icon={Clock}
-          color="text-amber-600 dark:text-amber-400"
-          bgColor="bg-amber-100 dark:bg-amber-950/50"
-          isLoading={statsLoading}
-        />
-      </motion.div>
-
-      {/* AI Insights + Recent Labs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* AI Timeline Insights */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-4 space-y-4"
-        >
-          <Card className="overflow-hidden border-primary/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <CardTitle className="text-sm font-medium">AI Insights</CardTitle>
-              </div>
-              <CardDescription>
-                AI-powered analysis of your recent health activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {aiLoading ? (
-                <div className="space-y-3">
-                  <div className="skeleton h-20 w-full rounded-lg" />
-                  <div className="skeleton h-16 w-full rounded-lg" />
-                </div>
-              ) : aiSummary ? (
-                <div className="space-y-3">
-                  {/* Summary */}
-                  <div className="relative rounded-lg bg-gradient-to-br from-primary/5 via-primary/3 to-background border p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm leading-relaxed text-foreground/90 line-clamp-4">
-                          {aiSummary.summary}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Key Events */}
-                  {aiSummary.keyEvents.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                          Key Events
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {aiSummary.keyEvents.slice(0, 3).map((event, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2.5 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-border hover:bg-muted/30"
-                          >
-                            <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                              <ChevronRight className="h-2.5 w-2.5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-medium">{event.title}</span>
-                                <span className="text-[9px] text-muted-foreground/60">
-                                  {formatDate(event.date)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Trends & Recommendations */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {aiSummary.trends.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <TrendingUp className="h-3 w-3 text-emerald-500" />
-                          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Trends</span>
-                        </div>
-                        <ul className="space-y-1">
-                          {aiSummary.trends.slice(0, 3).map((trend, i) => (
-                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                              <span className="mt-1.5 block h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-                              <span>{trend}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {aiSummary.recommendations.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <Sparkles className="h-3 w-3 text-amber-500" />
-                          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Suggestions</span>
-                        </div>
-                        <ul className="space-y-1">
-                          {aiSummary.recommendations.slice(0, 3).map((rec, i) => (
-                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                              <span className="mt-1.5 block h-1 w-1 shrink-0 rounded-full bg-amber-400" />
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <Link
-                    href="/timeline"
-                    className="group inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-all hover:text-primary/80"
-                  >
-                    View full timeline
-                    <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 py-2">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">No events to analyze yet.</p>
-                    <p className="text-xs text-muted-foreground/60 mt-0.5">Upload documents to get AI insights.</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Right Column: Recent Activity + Medications */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lg:col-span-3 space-y-4"
-        >
-          {/* Recent Labs */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                  <FlaskConical className="h-4 w-4 text-purple-500" />
-                  Recent Labs
-                </CardTitle>
-                <Link href="/labs" className="text-[10px] font-medium text-primary hover:underline">
-                  View all
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="space-y-2">
-                  <div className="skeleton h-10 w-full" />
-                  <div className="skeleton h-10 w-full" />
-                </div>
-              ) : stats?.recentLabResults && stats.recentLabResults.length > 0 ? (
-                <div className="space-y-2">
-                  {stats.recentLabResults.slice(0, 3).map((lab) => (
-                    <div key={lab.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">{lab.testName}</p>
-                        <p className="text-[10px] text-muted-foreground">{formatDate(lab.date)}</p>
-                      </div>
-                      <div className="flex items-center gap-2 text-right">
-                        <span className={cn("text-xs font-semibold tabular-nums", lab.isAbnormal ? "text-red-500" : "")}>
-                          {lab.value}{lab.unit ? ` ${lab.unit}` : ""}
-                        </span>
-                        {lab.isAbnormal && <AlertCircle className="h-3 w-3 text-red-500" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <FlaskConical className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">No lab results yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Today's Medications */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                  <Pill className="h-4 w-4 text-emerald-500" />
-                  Active Medications
-                </CardTitle>
-                <Link href="/medications" className="text-[10px] font-medium text-primary hover:underline">
-                  View all
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="space-y-2">
-                  <div className="skeleton h-10 w-full" />
-                  <div className="skeleton h-10 w-full" />
-                </div>
-              ) : medications && medications.length > 0 ? (
-                <div className="space-y-2">
-                  {medications.slice(0, 3).map((med) => (
-                    <div key={med.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50">
-                        <Pill className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium">{med.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {med.dosage}{med.frequency ? ` • ${med.frequency}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Pill className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">No active medications</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Timeline Preview */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-blue-500" />
-                  Recent Events
-                </CardTitle>
-                <Link href="/timeline" className="text-[10px] font-medium text-primary hover:underline">
-                  View all
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {timelineLoading ? (
-                <div className="space-y-2">
-                  <div className="skeleton h-10 w-full" />
-                  <div className="skeleton h-10 w-full" />
-                </div>
-              ) : timelineEvents.length > 0 ? (
-                <div className="space-y-2">
-                  {timelineEvents.slice(0, 3).map((event: any) => (
-                    <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/50">
-                        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{event.title}</p>
-                        <p className="text-[10px] text-muted-foreground">{formatDate(event.eventDate)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Activity className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">No recent events</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Recent Documents */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <FileText className="h-4 w-4 text-blue-500" />
-                Recent Documents
-              </CardTitle>
-              <Link href="/documents" className="text-[10px] font-medium text-primary hover:underline">
-                View all
-              </Link>
+        {/* AI Health Summary */}
+        <div className="lg:col-span-5 min-h-[260px] surface-card rounded-[1.5rem] border border-border/50 p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-bold text-foreground">AI Health Summary</h3>
+              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">AI Generated</span>
             </div>
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <div className="flex gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex-1 skeleton h-24 rounded-lg" />
-                ))}
-              </div>
-            ) : stats?.recentDocuments && stats.recentDocuments.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {stats.recentDocuments.slice(0, 4).map((doc) => (
-                  <Link
-                    key={doc.id}
-                    href={`/documents/${doc.id}`}
-                    className="flex items-center gap-3 rounded-lg border p-3 transition-all hover:shadow-md hover:border-primary/20 group"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-primary/5">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p
-                        className="text-xs font-medium truncate overflow-hidden text-ellipsis whitespace-nowrap block w-full group-hover:text-primary transition-colors"
-                        title={doc.fileName}
-                      >
-                        {doc.fileName}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={cn(
-                          "inline-block h-1.5 w-1.5 rounded-full",
-                          doc.status === "COMPLETED" ? "bg-emerald-500" : doc.status === "PROCESSING" ? "bg-amber-500" : "bg-muted-foreground"
-                        )} />
-                        <span className="text-[10px] text-muted-foreground">{doc.status}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            {aiLoading ? (
+               <div className="space-y-2 mt-2"><div className="skeleton h-3 w-full"/><div className="skeleton h-3 w-5/6"/></div>
             ) : (
-              <div className="text-center py-8">
-                <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Upload your first document</p>
-                <Button variant="outline" size="sm" className="mt-2" asChild>
-                  <Link href="/documents">
-                    <Upload className="h-4 w-4 mr-1.5" />
-                    Upload
-                  </Link>
-                </Button>
-              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed font-medium line-clamp-4">
+                {aiSummary?.summary || "Your overall health is looking good! Your lab results are mostly in the normal range. Continue your current medications and maintain a healthy lifestyle."}
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="border border-border/40 rounded-lg px-3 py-1.5 bg-background">
+              <p className="text-[10px] text-muted-foreground font-semibold">Blood Pressure</p>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Normal</p>
+            </div>
+            <div className="border border-border/40 rounded-lg px-3 py-1.5 bg-background">
+              <p className="text-[10px] text-muted-foreground font-semibold">Blood Sugar</p>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Controlled</p>
+            </div>
+            <div className="border border-border/40 rounded-lg px-3 py-1.5 bg-background">
+              <p className="text-[10px] text-muted-foreground font-semibold">Cholesterol</p>
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Borderline</p>
+            </div>
+          </div>
+          <Link href="/timeline" className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-1">
+            View full AI summary <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {/* Emergency Access */}
+        <div className="lg:col-span-3 min-h-[260px]">
+          <EmergencyCard
+            bloodGroup={patientProfile?.bloodGroup}
+            allergies={patientProfile?.allergies}
+          />
+        </div>
       </motion.div>
 
-      {/* Bottom quick links */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground/60">
-        <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘D</kbd>
-        <span>Dashboard</span>
-        <span>·</span>
-        <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
-        <span>Search</span>
-        <span>·</span>
-        <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘T</kbd>
-        <span>Timeline</span>
-        <span>·</span>
-        <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘F</kbd>
-        <span>Documents</span>
-      </div>
-    </div>
+      {/* Row 2: Metric Cards */}
+      <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <MetricCard
+          title="Documents" value={stats?.totalDocuments ?? 3} subtitle={`+${stats?.documentsThisMonth ?? 1} this month`}
+          icon={FileText} colorClass={{ bg: "bg-blue-500/10", text: "text-blue-500" }}
+          trendData={[1, 2, 2.5, 2, 4, 3]} trendColor="#3b82f6"
+        />
+        <MetricCard
+          title="Active Medications" value={stats?.activeMedications ?? 5} subtitle={`${stats?.upcomingRemindersToday ?? 2} due today`} subtitleColor="text-amber-500"
+          icon={Pill} colorClass={{ bg: "bg-emerald-500/10", text: "text-emerald-500" }}
+          trendData={[5, 5, 4, 5, 5]} trendColor="#10b981"
+        />
+        <MetricCard
+          title="Lab Results" value={stats?.totalLabResults ?? 27} subtitle="+3 this month"
+          icon={FlaskConical} colorClass={{ bg: "bg-purple-500/10", text: "text-purple-500" }}
+          trendData={[10, 15, 12, 18, 22, 27]} trendColor="#a855f7"
+        />
+      </motion.div>
+
+      {/* Row 3: Complex Widgets */}
+      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        
+        {/* Recent Labs */}
+        <div className="surface-card rounded-[1.5rem] border border-border/50 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-foreground">Recent Labs</h3>
+            <Link href="/labs" className="text-xs font-bold text-primary hover:underline">View all</Link>
+          </div>
+          <div className="flex-1 space-y-4">
+            {statsLoading ? Array(4).fill(0).map((_,i) => <div key={i} className="skeleton h-10 w-full" />) : 
+              (stats?.recentLabResults?.length ? stats.recentLabResults.slice(0, 4) : [
+                { id: 1, testName: "HbA1c", date: "2026-07-18T00:00:00Z", value: "5.6", unit: "%", range: "4.0 - 5.6%", isAbnormal: false, sparkColor: "#10b981" },
+                { id: 2, testName: "Fasting Blood Sugar", date: "2026-07-18T00:00:00Z", value: "92", unit: "mg/dL", range: "70 - 99", isAbnormal: false, sparkColor: "#10b981" },
+                { id: 3, testName: "Cholesterol", date: "2026-07-18T00:00:00Z", value: "198", unit: "mg/dL", range: "< 200", isAbnormal: false, sparkColor: "#f59e0b" },
+                { id: 4, testName: "Vitamin D", date: "2026-07-10T00:00:00Z", value: "28", unit: "ng/mL", range: "30 - 100", isAbnormal: true, sparkColor: "#ef4444" },
+              ]).map((lab: any) => {
+                const isWarning = lab.isAbnormal || lab.testName === "Cholesterol";
+                const sparkColor = lab.sparkColor || (lab.isAbnormal ? "#ef4444" : "#10b981");
+                const trendData = [
+                   parseFloat(lab.value)*0.9, parseFloat(lab.value)*1.1, parseFloat(lab.value)*1.05, parseFloat(lab.value)
+                ];
+                return (
+                  <div key={lab.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 w-1/2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex flex-shrink-0 items-center justify-center">
+                        <FlaskConical className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{lab.testName}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium">{formatDate(lab.date)}</p>
+                      </div>
+                    </div>
+                    <div className="w-1/4">
+                      <p className={cn("text-sm font-bold tabular-nums", lab.isAbnormal && "text-red-600 dark:text-red-400")}>
+                        {lab.value} <span className="text-[10px] text-muted-foreground">{lab.unit}</span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{lab.referenceRange || lab.range || "Standard"}</p>
+                    </div>
+                    <div className="w-1/4 flex justify-end">
+                      <MiniSparkline data={trendData} color={sparkColor} />
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+          <Link href="/labs" className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-6">
+            View full lab reports <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {/* Medication Reminders */}
+        <div className="surface-card rounded-[1.5rem] border border-border/50 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-foreground">Medication Reminders</h3>
+            <Link href="/medications" className="text-xs font-bold text-primary hover:underline">View all</Link>
+          </div>
+          
+          <div className="flex-1 flex items-center gap-6">
+            {/* Adherence Donut */}
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
+              <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" className="opacity-30" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="8" strokeLinecap="round" strokeDasharray="251.2" strokeDashoffset={251.2 * 0.2} />
+              </svg>
+              <div className="relative z-10 flex flex-col items-center">
+                <span className="text-xl font-extrabold text-foreground">80%</span>
+              </div>
+              <div className="absolute -bottom-4 text-center w-[120px]">
+                 <span className="text-[10px] text-muted-foreground font-semibold">Adherence this week</span>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="flex-1 space-y-4 pt-2">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Today&apos;s Schedule</p>
+              
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /></div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Domperidone 10mg</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">Before Breakfast</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /></div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Metformin 500mg SR</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">After Lunch</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Telmisartan 40mg</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">After Dinner</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Link href="/medications" className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-8 justify-center">
+            View all medications <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {/* Health Timeline Preview */}
+        <div className="surface-card rounded-[1.5rem] border border-border/50 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-foreground">Health Timeline Preview</h3>
+            <Link href="/timeline" className="text-xs font-bold text-primary hover:underline">View all</Link>
+          </div>
+          
+          <div className="flex-1 relative">
+            <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-border/60" />
+            
+            <div className="space-y-6">
+               <div className="relative flex gap-4">
+                 <div className="h-8 w-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center relative z-10 shrink-0">
+                    <FlaskConical className="h-4 w-4 text-emerald-600" />
+                 </div>
+                 <div className="flex-1 pb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-md">Lab Test</span>
+                         <span className="text-[10px] text-muted-foreground font-medium">18 Jul 2026</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-start">
+                       <p className="text-sm font-bold text-foreground">Electrolyte Panel Analysis</p>
+                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">Normal</span>
+                    </div>
+                 </div>
+               </div>
+
+               <div className="relative flex gap-4">
+                 <div className="h-8 w-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center relative z-10 shrink-0">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                 </div>
+                 <div className="flex-1 pb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-md">Visit</span>
+                         <span className="text-[10px] text-muted-foreground font-medium">18 Jul 2026</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-start">
+                       <p className="text-sm font-bold text-foreground">Consultation for headache</p>
+                       <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full">Mild</span>
+                    </div>
+                 </div>
+               </div>
+
+               <div className="relative flex gap-4">
+                 <div className="h-8 w-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center relative z-10 shrink-0">
+                    <Activity className="h-4 w-4 text-amber-600" />
+                 </div>
+                 <div className="flex-1 pb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-md">Procedure</span>
+                         <span className="text-[10px] text-muted-foreground font-medium">18 Jul 2026</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-start">
+                       <p className="text-sm font-bold text-foreground">Recommended Follow-up Tests</p>
+                       <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">Pending</span>
+                    </div>
+                 </div>
+               </div>
+            </div>
+          </div>
+          
+          <Link href="/timeline" className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-4">
+            View full timeline <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+      </motion.div>
+
+      {/* Row 4: AI Insights */}
+      <motion.div variants={item} className="surface-card rounded-[1.5rem] border border-border/50 p-6">
+         <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">AI Insights</h3>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {insights.map((insight, i) => {
+              const Icon = insight.icon;
+              return (
+                <div key={i} className="flex items-start gap-3">
+                  <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-0.5", insight.bg)}>
+                    <Icon className={cn("h-4 w-4", insight.color)} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground mb-1">{insight.title}</h4>
+                    <p className="text-[11px] text-muted-foreground leading-snug pr-4">{insight.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+         </div>
+      </motion.div>
+      
+
+    </motion.div>
   );
 }

@@ -91,10 +91,10 @@ export function DocumentUploader({ onUpload, isUploading }: DocumentUploaderProp
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer",
+          "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-colors cursor-pointer w-full h-full",
           dragActive
             ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
+            : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50",
           error && "border-destructive bg-destructive/5",
         )}
       >
@@ -107,18 +107,21 @@ export function DocumentUploader({ onUpload, isUploading }: DocumentUploaderProp
         />
 
         {!selectedFile ? (
-          <>
-            <Upload className={cn(
-              "h-10 w-10 mb-4",
-              dragActive ? "text-primary" : "text-muted-foreground/50",
-            )} />
-            <p className="text-sm font-medium">
-              {dragActive ? "Drop your file here" : "Drag & drop or click to browse"}
+          <div className="flex flex-col items-center justify-center py-2">
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <Upload className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-sm font-bold text-foreground mb-3">
+              Drag & drop files here
+              <span className="block font-normal text-muted-foreground mt-0.5 text-center text-xs">or</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              PDF, JPEG, PNG, WebP, TIFF (max 20MB)
+            <Button variant="default" className="rounded-full px-6 h-8 font-semibold text-xs shadow-md shadow-primary/20 hover:shadow-primary/30">
+              Browse Files
+            </Button>
+            <p className="mt-3 text-[10px] text-muted-foreground font-medium">
+              Supports: PDF, JPG, PNG, HEIC • Max: 25MB
             </p>
-          </>
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 w-full">

@@ -35,6 +35,12 @@ export function VoiceAssistant({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [textInput, setTextInput] = useState("");
 
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("open-voice-assistant", handleOpen);
+    return () => window.removeEventListener("open-voice-assistant", handleOpen);
+  }, []);
+
   const {
     status,
     isRecording,

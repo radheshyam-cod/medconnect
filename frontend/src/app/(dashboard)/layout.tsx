@@ -184,41 +184,39 @@ export default function DashboardLayout({
       {/* Command palette overlay */}
       {showSearch && (
         <div className="fixed inset-0 z-50" onClick={() => setShowSearch(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg p-4">
-            <div className="rounded-2xl border bg-background shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <form onSubmit={handleSearch} className="flex items-center gap-3 border-b px-4 py-3">
-                <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-md p-4">
+            <div className="rounded-xl border border-border/60 bg-background/80 backdrop-blur-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <form onSubmit={handleSearch} className="flex items-center gap-3 px-4 py-3">
+                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search across all records..."
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder="Search records, medications, labs..."
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                 />
-                <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border/50 bg-muted/30 px-1.5 text-[9px] font-medium text-muted-foreground/60">
                   ESC
                 </kbd>
               </form>
-              <div className="p-2 text-xs text-muted-foreground">
-                <div className="px-2 py-1.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Quick Navigation</p>
-                  <div className="mt-1 space-y-0.5">
-                    {sidebarItems.map((item) => (
-                      <button
-                        key={item.href}
-                        onClick={() => { router.push(item.href); setShowSearch(false); }}
-                        className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-accent transition-colors"
-                      >
-                        <item.icon className="h-4 w-4 text-muted-foreground" />
-                        <span>{item.label}</span>
-                        <kbd className="ml-auto text-[10px] text-muted-foreground/60">
-                          {item.shortcut === "/" ? "⌘K" : `⌘${item.shortcut.toUpperCase()}`}
-                        </kbd>
-                      </button>
-                    ))}
-                  </div>
+              <div className="border-t border-border/40 px-2 py-2">
+                <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">Quick Navigation</p>
+                <div className="mt-1 space-y-0.5">
+                  {sidebarItems.map((item) => (
+                    <button
+                      key={item.href}
+                      onClick={() => { router.push(item.href); setShowSearch(false); }}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+                    >
+                      <item.icon className="h-3.5 w-3.5" />
+                      <span>{item.label}</span>
+                      <kbd className="ml-auto text-[9px] text-muted-foreground/40">
+                        {item.shortcut === "/" ? "⌘K" : `⌘${item.shortcut.toUpperCase()}`}
+                      </kbd>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -237,12 +235,12 @@ export default function DashboardLayout({
       {/* Premium Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-sidebar/70 backdrop-blur-xl transition-transform duration-300 lg:static lg:translate-x-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.4)]",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border/50 bg-sidebar/60 backdrop-blur-2xl transition-transform duration-300 ease-out lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* Brand */}
-        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+        <div className="flex h-14 items-center border-b border-sidebar-border/40 px-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2.5 font-semibold text-sidebar-foreground group"
@@ -250,24 +248,24 @@ export default function DashboardLayout({
             <Image
               src="/logo.png"
               alt="MedConnect Logo"
-              width={32}
-              height={32}
-              className="h-8 w-8 object-contain shrink-0 transition-transform group-hover:scale-105"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105"
               priority
             />
-            <span className="text-base font-extrabold tracking-tight text-[#0c62ff] dark:text-[#3b82f6]">MedConnect</span>
-            <span className="rounded-md bg-[#0c62ff]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#0c62ff] dark:text-[#3b82f6]">AI</span>
+            <span className="text-sm font-bold tracking-tight text-foreground">MedConnect</span>
+            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">AI</span>
           </Link>
           <button
-            className="ml-auto lg:hidden text-sidebar-foreground"
+            className="ml-auto lg:hidden text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-none">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 scrollbar-none">
           {sidebarItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
@@ -279,26 +277,26 @@ export default function DashboardLayout({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "nav-item group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    ? "nav-item-active bg-accent/60 text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/30 hover:text-foreground",
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
                 <Icon className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  isActive ? "text-primary" : "group-hover:scale-110"
+                  "h-4 w-4 transition-all duration-150",
+                  isActive ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground/80"
                 )} />
                 <span className="flex-1">{item.label}</span>
 
                 {/* Badge count */}
                 {hasCount && (
                   <span className={cn(
-                    "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+                    "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums transition-all",
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-sidebar-accent text-sidebar-foreground group-hover:bg-sidebar-accent"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted/50 text-muted-foreground group-hover:bg-muted"
                   )}>
                     {count > 99 ? "99+" : count}
                   </span>
@@ -306,7 +304,7 @@ export default function DashboardLayout({
 
                 {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-primary" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary" />
                 )}
               </Link>
             );
@@ -314,41 +312,38 @@ export default function DashboardLayout({
         </nav>
 
         {/* Bottom section: User */}
-        <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-2.5 rounded-lg bg-sidebar-accent/30 border border-sidebar-border/40 p-2.5 transition-all hover:bg-sidebar-accent/60">
-            <div className="shrink-0 pointer-events-none select-none">
+        <div className="border-t border-sidebar-border/40 p-3">
+          <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-accent/30">
+            <div className="shrink-0">
               {user?.imageUrl ? (
                 <img
                   src={user.imageUrl}
-                  alt={user?.fullName || "User Avatar"}
-                  className="h-8 w-8 rounded-lg object-cover border border-sidebar-border/60 shadow-xs"
+                  alt={user?.fullName || ""}
+                  className="h-7 w-7 rounded-md object-cover ring-1 ring-border/50"
                 />
               ) : (
-                <div className="pointer-events-none select-none [&_*]:pointer-events-none [&_.cl-userButtonAvatarBox]:!rounded-lg">
+                <div className="[&_.cl-userButtonAvatarBox]:!h-7 [&_.cl-userButtonAvatarBox]:!w-7 [&_.cl-userButtonAvatarBox]:!rounded-md">
                   <UserButton
                     afterSignOutUrl="/sign-in"
-                    appearance={{ elements: { userButtonAvatarBox: "rounded-lg" } }}
+                    appearance={{ elements: { userButtonAvatarBox: "rounded-md" } }}
                   />
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate text-sidebar-foreground">
+              <p className="text-sm font-medium truncate text-foreground/90">
                 {user?.fullName || user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User"}
               </p>
-              <p
-                className="text-[11px] font-medium text-sidebar-foreground/70 truncate"
-                title={user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || ""}
-              >
-                {user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "No email"}
+              <p className="text-[11px] text-muted-foreground/60 truncate">
+                {user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || ""}
               </p>
             </div>
             <button
               onClick={() => signOut({ redirectUrl: "/sign-in" })}
-              className="shrink-0 rounded-md p-1.5 text-destructive hover:bg-destructive/15 transition-all"
-              title="Log out"
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-all"
+              title="Sign out"
             >
-              <LogOut className="h-4 w-4 text-destructive" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -357,12 +352,12 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden relative">
         {/* Top header bar */}
-        <header className="flex h-14 items-center border-b bg-background/60 backdrop-blur-xl px-4 lg:px-6 sticky top-0 z-30 shadow-sm">
+        <header className="flex h-14 items-center border-b border-border/50 bg-background/40 backdrop-blur-2xl px-4 lg:px-6 sticky top-0 z-30">
           <button
-            className="mr-3 lg:hidden text-muted-foreground hover:text-foreground"
+            className="mr-3 lg:hidden p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4" />
           </button>
           <Link
             href="/dashboard"
@@ -371,23 +366,23 @@ export default function DashboardLayout({
             <Image
               src="/logo.png"
               alt="MedConnect Logo"
-              width={26}
-              height={26}
-              className="h-6 w-6 object-contain shrink-0"
+              width={22}
+              height={22}
+              className="h-5.5 w-5.5 object-contain shrink-0"
             />
-            <span className="font-extrabold text-base tracking-tight text-[#0c62ff] dark:text-[#3b82f6]">MedConnect</span>
+            <span className="font-bold text-sm tracking-tight text-foreground">MedConnect</span>
           </Link>
 
           {/* Search bar */}
-          <div className="flex-1 max-w-md ml-0 lg:ml-2">
+          <div className="flex-1 max-w-sm ml-0 lg:ml-3">
             <button
               onClick={() => setShowSearch(true)}
-              className="group relative flex w-full items-center gap-2 rounded-lg border border-input bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground transition-all hover:border-primary/30 hover:bg-muted/50 hover:text-foreground"
+              className="group flex w-full items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground/70 transition-all hover:border-border hover:bg-muted/30 hover:text-foreground/80"
             >
-              <Search className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left text-xs">Search across records...</span>
-              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground/60">
-                <Command className="h-2.5 w-2.5" />K
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 text-left">Search records...</span>
+              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border/50 bg-background/50 px-1.5 text-[9px] font-medium text-muted-foreground/50">
+                <Command className="h-2 w-2" />K
               </kbd>
             </button>
           </div>
@@ -395,14 +390,11 @@ export default function DashboardLayout({
           <div className="flex-1" />
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <PatientSwitcher />
             <ModeToggle />
-            <button className="relative rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-destructive">
-                <span className="absolute inset-0 rounded-full bg-destructive animate-ping opacity-75" />
-              </span>
+            <button className="relative rounded-full p-2 text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-all">
+              <Bell className="h-4 w-4" />
             </button>
           </div>
         </header>
