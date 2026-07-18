@@ -659,12 +659,12 @@ export default function SettingsPage() {
                       <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/30 p-4 rounded-xl border border-border/60 shadow-sm">
                         <div className="h-32 w-32 shrink-0 bg-white p-2 rounded-xl shadow-md flex items-center justify-center border border-border/80">
                           <QRCodeSVG
-                            value={`otpauth://totp/MedConnect:${encodeURIComponent(email !== "Not provided" ? email : "user@medconnect.in")}?secret=MEDC2026AUTHKEY9&issuer=MedConnect`}
+                            value={`otpauth://totp/${encodeURIComponent(`MedConnect:${email !== "Not provided" ? email : "user@medconnect.in"}`)}?secret=MEDC2026AUTHKEYA&issuer=MedConnect`}
                             size={112}
                             level="M"
                             includeMargin={false}
                             imageSettings={{
-                              src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230f172a'><path d='M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.3v3.5c0 .7-.6 1.2-1.2 1.2H9.2c-.6 0-1.2-.5-1.2-1.2v-3.5c0-.7.6-1.3 1.2-1.3V9.5C9.2 8.1 10.6 7 12 7zm0 1.2c-.8 0-1.5.7-1.5 1.3V11h3V9.5c0-.6-.7-1.3-1.5-1.3z'/></svg>",
+                              src: `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230f172a'><path d='M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.3v3.5c0 .7-.6 1.2-1.2 1.2H9.2c-.6 0-1.2-.5-1.2-1.2v-3.5c0-.7.6-1.3 1.2-1.3V9.5C9.2 8.1 10.6 7 12 7zm0 1.2c-.8 0-1.5.7-1.5 1.3V11h3V9.5c0-.6-.7-1.3-1.5-1.3z'/></svg>")}`,
                               x: undefined,
                               y: undefined,
                               height: 20,
@@ -678,7 +678,7 @@ export default function SettingsPage() {
                             Point Google Authenticator or Authy at this QR code. Or copy secret key:
                           </p>
                           <div className="flex items-center justify-between gap-2 mt-2 bg-background px-3 py-1.5 rounded-lg border border-border text-xs font-mono font-semibold select-all text-primary shadow-inner">
-                            <span>MEDC-2026-AUTH-KEY9</span>
+                            <span>MEDC-2026-AUTH-KEYA</span>
                           </div>
                         </div>
                       </div>

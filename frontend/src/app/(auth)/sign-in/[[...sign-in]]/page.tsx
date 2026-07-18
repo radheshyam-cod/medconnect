@@ -3,6 +3,7 @@
 import { SignIn } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { dark } from "@clerk/themes";
+import Link from "next/link";
 
 export default function SignInPage() {
   const { resolvedTheme } = useTheme();
@@ -55,9 +56,9 @@ export default function SignInPage() {
       {/* Switch Link Outside Below the Card matching Image 2 */}
       <div className="mt-3.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium text-center">
         Don&apos;t have an account?{" "}
-        <a href="/sign-up" className="text-[#0c62ff] dark:text-[#3b82f6] hover:underline font-semibold">
+        <Link href="/sign-up" className="text-[#0c62ff] dark:text-[#3b82f6] hover:underline font-semibold">
           Sign up
-        </a>
+        </Link>
       </div>
     </div>
   );
