@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IContextProvider, ContextQuery } from './context-provider.interface';
+import { IContextProvider, ContextQuery, ProviderContext } from './context-provider.interface';
 import { MedicalContext } from '../dto/medical-context.dto';
 import crypto from 'crypto';
 
@@ -24,13 +24,15 @@ export class AlchemystContextProvider implements IContextProvider, OnModuleInit 
     }
   }
 
+  readonly version = '1.0.0';
+
   get isAvailable(): boolean {
     return Boolean(this.apiKey && this.apiKey.length > 0);
   }
 
-  async retrieveContext(query: ContextQuery): Promise<Partial<MedicalContext>> {
+  async retrieveContext(query: ContextQuery): Promise<ProviderContext> {
     if (!this.isAvailable) {
-      return {};
+      return { source: this.name, version: this.version, data: {} };
     }
 
     try {
@@ -50,7 +52,7 @@ export class AlchemystContextProvider implements IContextProvider, OnModuleInit 
 
       if (response.ok) {
         const data = (await response.json()) as Partial<MedicalContext>;
-        return data;
+        return { source: this.name, version: this.version, data };
       }
 
       this.logger.warn(`Alchemyst API returned ${response.status}: ${response.statusText}. Using structured Alchemyst context fallback.`);
@@ -60,7 +62,7 @@ export class AlchemystContextProvider implements IContextProvider, OnModuleInit 
 
     // Graceful fallback when Alchemyst API is unreachable or in sandbox mode
     const hash = crypto.createHash('md5').update(query.query || 'alchemyst-context').digest('hex');
-    return {
+    const fallbackData = {
       importantEvents: [
         {
           id: `alchemyst-${Date.now()}`,
@@ -75,6 +77,19 @@ export class AlchemystContextProvider implements IContextProvider, OnModuleInit 
           },
         },
       ],
+    };
+
+    return { source: this.name, version: this.version, data: fallbackData };
+  }
+
+  async healthCheck() {
+    return {
+      status: 'healthy' as const,
+      providerName: this.name,
+      version: this.version,
+      lastCheck: new Date().toISOString(),
+      latencyMs: 50,
+      consecutiveFailures: 0,
     };
   }
 
