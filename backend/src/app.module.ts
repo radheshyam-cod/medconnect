@@ -24,6 +24,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { MemoryModule } from './modules/memory/memory.module';
 import { AIContextModule } from './modules/ai-context/ai-context.module';
 import { VoiceModule } from './modules/voice/voice.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -55,7 +56,7 @@ import { VoiceModule } from './modules/voice/voice.module';
         const redisUrl = config.get<string>('REDIS_URL');
         if (redisUrl) {
           return {
-            connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) as any
+            connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) as unknown as Record<string, unknown>
           };
         }
         return {
@@ -90,6 +91,7 @@ import { VoiceModule } from './modules/voice/voice.module';
     FhirModule,
     DashboardModule,
     VoiceModule,
+    NotificationsModule,
   ],
   providers: [
     {

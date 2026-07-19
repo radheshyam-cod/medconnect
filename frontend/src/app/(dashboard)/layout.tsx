@@ -17,16 +17,17 @@ import {
   Share2,
   Menu,
   X,
-  Bell,
   Sparkles,
   ChevronRight,
   Heart,
   Command,
   Loader2,
   LogOut,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ModeToggle } from "@/components/mode-toggle";
 import { VoiceAssistant } from "@/components/voice/VoiceAssistant";
 import { QuickActions } from "@/components/premium/quick-actions";
@@ -34,6 +35,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { PatientProvider } from "@/components/patient-context";
 import { PatientSwitcher } from "@/components/patient-switcher";
+import { NotificationsDropdown } from "@/components/notifications-dropdown";
 
 const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "D" },
@@ -60,6 +62,35 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return JSON.parse(localStorage.getItem("medconnect-recent-searches") || "[]");
+      } catch {}
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("medconnect-recent-searches", JSON.stringify(recentSearches));
+  }, [recentSearches]);
+
+  const addToRecentSearches = useCallback((query: string) => {
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((s) => s.toLowerCase() !== query.toLowerCase());
+      return [query, ...filtered].slice(0, 8);
+    });
+  }, []);
+
+  const removeRecentSearch = useCallback((query: string) => {
+    setRecentSearches((prev) => prev.filter((s) => s !== query));
+  }, []);
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([]);
+  }, []);
 
   const isAuthReady = isLoaded && !!user;
 
@@ -163,11 +194,18 @@ export default function DashboardLayout({
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      addToRecentSearches(searchQuery.trim());
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setShowSearch(false);
     }
-  }, [searchQuery, router]);
+  }, [searchQuery, router, addToRecentSearches]);
+
+  const handleRecentSearchClick = useCallback((query: string) => {
+    addToRecentSearches(query);
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    setShowSearch(false);
+  }, [router, addToRecentSearches]);
 
   if (!isAuthReady) {
     return (
@@ -182,47 +220,111 @@ export default function DashboardLayout({
     <div className="flex h-screen w-full items-center justify-center p-2 sm:p-4 lg:p-6">
       <div className="app-shell flex h-full w-full max-w-[1600px] rounded-2xl overflow-hidden relative border border-white/20 dark:border-white/10 shadow-2xl">
       {/* Command palette overlay */}
+      <AnimatePresence>
       {showSearch && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowSearch(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-md p-4">
-            <div className="rounded-xl border border-border/60 bg-background/80 backdrop-blur-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <form onSubmit={handleSearch} className="flex items-center gap-3 px-4 py-3">
-                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-50"
+          onClick={() => setShowSearch(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute top-[18%] left-1/2 -translate-x-1/2 w-full max-w-lg p-4"
+          >
+            <div
+              className="rounded-2xl border border-border/50 bg-background/70 backdrop-blur-2xl shadow-2xl shadow-primary/5 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <form onSubmit={handleSearch} className="flex items-center gap-3 px-4 py-3.5 border-b border-border/30">
+                <Search className="h-4 w-4 text-muted-foreground/60 shrink-0" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   placeholder="Search records, medications, labs..."
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                 />
-                <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border/50 bg-muted/30 px-1.5 text-[9px] font-medium text-muted-foreground/60">
+                <kbd className="hidden sm:inline-flex h-5 items-center rounded-md border border-border/40 bg-muted/40 px-1.5 text-[9px] font-medium text-muted-foreground/50 shadow-sm">
                   ESC
                 </kbd>
               </form>
-              <div className="border-t border-border/40 px-2 py-2">
-                <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">Quick Navigation</p>
-                <div className="mt-1 space-y-0.5">
-                  {sidebarItems.map((item) => (
+
+              {/* Recent searches */}
+              {recentSearches.length > 0 && !searchQuery && (
+                <div className="px-2 pt-2 pb-1">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">Recent</p>
                     <button
-                      key={item.href}
-                      onClick={() => { router.push(item.href); setShowSearch(false); }}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+                      onClick={clearRecentSearches}
+                      className="text-[9px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                     >
-                      <item.icon className="h-3.5 w-3.5" />
-                      <span>{item.label}</span>
-                      <kbd className="ml-auto text-[9px] text-muted-foreground/40">
-                        {item.shortcut === "/" ? "⌘K" : `⌘${item.shortcut.toUpperCase()}`}
-                      </kbd>
+                      Clear all
                     </button>
-                  ))}
+                  </div>
+                  <div className="space-y-0.5">
+                    {recentSearches.map((query) => (
+                      <div key={query} className="group flex items-center rounded-lg hover:bg-accent/50 transition-colors">
+                        <button
+                          onClick={() => handleRecentSearchClick(query)}
+                          className="flex flex-1 items-center gap-3 px-2 py-1.5 text-xs text-muted-foreground/80 hover:text-foreground transition-colors"
+                        >
+                          <Clock className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                          <span className="truncate">{query}</span>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeRecentSearch(query); }}
+                          className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-muted-foreground/30 hover:text-muted-foreground transition-all"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="px-2 py-2">
+                <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                  {searchQuery ? "Search" : "Quick Navigation"}
+                </p>
+                <div className="mt-1 space-y-0.5">
+                  {sidebarItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <button
+                        key={item.href}
+                        onClick={() => { router.push(item.href); setShowSearch(false); }}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-xs transition-all",
+                          isActive
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        )}
+                      >
+                        <item.icon className={cn("h-3.5 w-3.5 shrink-0", isActive && "text-primary")} />
+                        <span>{item.label}</span>
+                        <kbd className="ml-auto text-[9px] text-muted-foreground/30">
+                          {item.shortcut === "/" ? "⌘K" : `⌘${item.shortcut.toUpperCase()}`}
+                        </kbd>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -377,13 +479,17 @@ export default function DashboardLayout({
           <div className="flex-1 max-w-sm ml-0 lg:ml-3">
             <button
               onClick={() => setShowSearch(true)}
-              className="group flex w-full items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground/70 transition-all hover:border-border hover:bg-muted/30 hover:text-foreground/80"
+              className="group relative flex w-full items-center gap-2.5 rounded-xl border border-border/40 bg-gradient-to-r from-muted/30 to-muted/10 px-3 py-2 text-xs text-muted-foreground/60 transition-all duration-200 hover:border-primary/30 hover:from-primary/[0.04] hover:to-muted/20 hover:text-foreground/80 hover:shadow-sm hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
-              <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 text-left">Search records...</span>
-              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border/50 bg-background/50 px-1.5 text-[9px] font-medium text-muted-foreground/50">
-                <Command className="h-2 w-2" />K
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 group-hover:text-primary/60 transition-colors duration-200" />
+              <span className="flex-1 text-left">
+                <span className="hidden sm:inline">Search records...</span>
+                <span className="sm:hidden">Search...</span>
+              </span>
+              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded-md border border-border/30 bg-background/60 px-1.5 text-[9px] font-medium text-muted-foreground/40 shadow-sm group-hover:border-border/50 group-hover:text-muted-foreground/60 transition-all">
+                <Command className="h-2.5 w-2.5" />K
               </kbd>
+              <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-black/[0.02] dark:ring-white/[0.04] pointer-events-none" />
             </button>
           </div>
 
@@ -393,9 +499,7 @@ export default function DashboardLayout({
           <div className="flex items-center gap-1">
             <PatientSwitcher />
             <ModeToggle />
-            <button className="relative rounded-full p-2 text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-all">
-              <Bell className="h-4 w-4" />
-            </button>
+            <NotificationsDropdown />
           </div>
         </header>
 

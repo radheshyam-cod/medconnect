@@ -118,25 +118,27 @@ export class DashboardService {
       })
     ]);
 
-    // Calculate Health Score
-    let healthScore = 85; // Strong base score
-    if (activeMedications > 0) healthScore -= Math.min(activeMedications * 2, 10);
-    if (upcomingRemindersToday > 2) healthScore -= 3;
-    const abnormalLabs = recentLabResultsRaw.filter(l => l.isAbnormal).length;
-    healthScore -= (abnormalLabs * 5);
+    // Calculate Health Score (If no documents/data provided, score should be 0)
+    let healthScore = (totalDocuments === 0 && totalLabResults === 0 && activeMedications === 0) ? 0 : 85;
+    if (healthScore !== 0) {
+      if (activeMedications > 0) healthScore -= Math.min(activeMedications * 2, 10);
+      if (upcomingRemindersToday > 2) healthScore -= 3;
+      const abnormalLabs = recentLabResultsRaw.filter(l => l.isAbnormal).length;
+      healthScore -= (abnormalLabs * 5);
 
-    // Profile completeness points
-    if (patientProfile) {
-      if (patientProfile.bloodGroup) healthScore += 2;
-      if (patientProfile.emergencyContact) healthScore += 5; // Vital to have emergency contact
-      if (patientProfile.allergies && patientProfile.allergies.length > 0) healthScore -= 2; // Slight deduct for having allergies
+      // Profile completeness points
+      if (patientProfile) {
+        if (patientProfile.bloodGroup) healthScore += 2;
+        if (patientProfile.emergencyContact) healthScore += 5; // Vital to have emergency contact
+        if (patientProfile.allergies && patientProfile.allergies.length > 0) healthScore -= 2; // Slight deduct for having allergies
+      }
+
+      if (documentsThisMonth > 0) healthScore += 5; // Reward for active tracking
+      if (documentsThisMonth > 5) healthScore += 2; 
+
+      // Clamp score between 0 and 100
+      healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
     }
-
-    if (documentsThisMonth > 0) healthScore += 5; // Reward for active tracking
-    if (documentsThisMonth > 5) healthScore += 2; 
-
-    // Clamp score between 0 and 100
-    healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
 
     return new DashboardStatsDto({
       documentsThisMonth,

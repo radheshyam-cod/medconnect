@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState, useRef } from "react";
-import { Upload, File, X, AlertCircle, Cpu, Database, ShieldCheck, Sparkles, CheckCircle2, FolderPlus } from "lucide-react";
+import { Upload, File, X, AlertCircle, FlaskConical, Activity, Calendar, Sparkles, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-interface DocumentUploaderProps {
-  onUpload: (file: File, metadata?: { documentType?: string; priorityOcr?: boolean }) => Promise<void>;
+interface LabUploaderProps {
+  onUpload: (file: File, metadata: { documentType: string; documentDate?: string; systemTag?: string }) => Promise<void>;
   isUploading: boolean;
   onCancel?: () => void;
 }
@@ -16,34 +16,32 @@ const ALLOWED_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/tiff",
 ];
 
 const MAX_SIZE = 25 * 1024 * 1024; // 25MB
 
-const VAULT_CATEGORIES = [
-  { id: "AUTO", label: "✨ AI Auto-Classify Folder & Category" },
-  { id: "PRESCRIPTION", label: "💊 Prescriptions Vault" },
-  { id: "LAB_REPORT", label: "🧬 Lab Reports Vault" },
-  { id: "DISCHARGE_SUMMARY", label: "🏥 Discharge Summaries Archive" },
-  { id: "IMAGING", label: "🖼️ Imaging, X-Ray & MRI Scans" },
-  { id: "OTHER", label: "📁 Insurance Claims & Other Records" },
+const DIAGNOSTIC_SYSTEMS = [
+  { id: "general", label: "General & Complete Blood Count (CBC)" },
+  { id: "cardiac", label: "Cardiovascular & Lipid Panel" },
+  { id: "metabolic", label: "Metabolic, Diabetes & Liver (LFT)" },
+  { id: "renal", label: "Renal, Kidney & Electrolytes (KFT)" },
+  { id: "hormone", label: "Endocrine & Thyroid Panel" },
 ];
 
-export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUploaderProps) {
+export function LabBiomarkerUploader({ onUpload, isUploading, onCancel }: LabUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [targetCategory, setTargetCategory] = useState<string>("AUTO");
-  const [priorityOcr, setPriorityOcr] = useState<boolean>(true);
+  const [testDate, setTestDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [systemTag, setSystemTag] = useState<string>("general");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return "Unsupported file type. Please upload PDF, JPEG, PNG, WebP, or TIFF.";
+      return "Unsupported file type. Please upload a Lab PDF, JPEG, PNG, or WebP image.";
     }
     if (file.size > MAX_SIZE) {
-      return "File is too large. Maximum size is 25MB.";
+      return "File is too large. Maximum size allowed for high-resolution diagnostic lab scans is 25MB.";
     }
     return null;
   };
@@ -85,8 +83,9 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
   const handleUploadClick = async () => {
     if (!selectedFile) return;
     await onUpload(selectedFile, {
-      documentType: targetCategory !== "AUTO" ? targetCategory : undefined,
-      priorityOcr,
+      documentType: "LAB_REPORT",
+      documentDate: testDate,
+      systemTag,
     });
     setSelectedFile(null);
   };
@@ -98,23 +97,23 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
   };
 
   return (
-    <div className="rounded-3xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-background to-cyan-500/10 p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
+    <div className="rounded-3xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-500/10 via-background to-fuchsia-500/10 p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
       {/* Background glow */}
-      <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-blue-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-violet-500/15 blur-3xl pointer-events-none" />
 
       {/* Header info */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 shadow-sm shrink-0">
-            <Cpu className="h-6 w-6 animate-pulse" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30 shadow-sm shrink-0">
+            <FlaskConical className="h-6 w-6 animate-pulse" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
-              <Sparkles className="h-3 w-3" /> Multi-Engine OCR Ingestion Hub
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">
+              <Sparkles className="h-3 w-3" /> Biomarker Extraction Studio
             </div>
-            <h3 className="text-lg font-bold text-foreground leading-tight">Digital Vault Record Archiving</h3>
+            <h3 className="text-lg font-bold text-foreground leading-tight">Diagnostic Lab Report Ingestion</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Upload any medical record, ID card, or clinical summary. AI encrypts, archives, and indexes searchable text across all engines.
+              Upload blood work or diagnostic PDFs. AI extracts individual biomarker values and maps reference ranges automatically.
             </p>
           </div>
         </div>
@@ -128,43 +127,37 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
         )}
       </div>
 
-      {/* Vault Metadata & OCR Priority */}
+      {/* Diagnostic Metadata Tagging */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/40">
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-            <FolderPlus className="h-3.5 w-3.5 text-blue-500" /> Target Vault Folder Category
+            <Activity className="h-3.5 w-3.5 text-violet-500" /> Diagnostic Body System / Panel
           </label>
           <select
-            value={targetCategory}
-            onChange={(e) => setTargetCategory(e.target.value)}
+            value={systemTag}
+            onChange={(e) => setSystemTag(e.target.value)}
             disabled={isUploading}
-            className="flex h-10 w-full rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-xs font-medium focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-1 focus-visible:ring-blue-500 shadow-sm transition-colors"
+            className="flex h-10 w-full rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-xs font-medium focus-visible:outline-none focus-visible:border-violet-500 focus-visible:ring-1 focus-visible:ring-violet-500 shadow-sm transition-colors"
           >
-            {VAULT_CATEGORIES.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.label}
+            {DIAGNOSTIC_SYSTEMS.map((sys) => (
+              <option key={sys.id} value={sys.id}>
+                {sys.label}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="space-y-1.5 flex flex-col justify-end">
+        <div className="space-y-1.5">
           <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" /> OCR Processing Priority
+            <Calendar className="h-3.5 w-3.5 text-fuchsia-500" /> Test Collection Date
           </label>
-          <div className="flex items-center h-10 rounded-xl border border-border/60 bg-background/90 px-3 shadow-sm">
-            <input
-              type="checkbox"
-              id="priorityOcr"
-              checked={priorityOcr}
-              onChange={(e) => setPriorityOcr(e.target.checked)}
-              disabled={isUploading}
-              className="h-4 w-4 rounded border-blue-500 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <label htmlFor="priorityOcr" className="ml-2.5 text-xs font-bold text-foreground cursor-pointer select-none flex-1 truncate">
-              High-Speed Deep Extraction (GPU OCR)
-            </label>
-          </div>
+          <input
+            type="date"
+            value={testDate}
+            onChange={(e) => setTestDate(e.target.value)}
+            disabled={isUploading}
+            className="flex h-10 w-full rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-xs font-medium focus-visible:outline-none focus-visible:border-violet-500 focus-visible:ring-1 focus-visible:ring-violet-500 shadow-sm transition-colors"
+          />
         </div>
       </div>
 
@@ -178,8 +171,8 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
         className={cn(
           "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition-all cursor-pointer w-full group",
           dragActive
-            ? "border-blue-500 bg-blue-500/10 scale-[1.01]"
-            : "border-blue-500/30 hover:border-blue-500/60 bg-card/60 hover:bg-card/90 shadow-inner",
+            ? "border-violet-500 bg-violet-500/10 scale-[1.01]"
+            : "border-violet-500/30 hover:border-violet-500/60 bg-card/60 hover:bg-card/90 shadow-inner",
           error && "border-destructive bg-destructive/5",
           isUploading && "pointer-events-none opacity-80"
         )}
@@ -187,7 +180,7 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           className="hidden"
           onChange={handleChange}
           disabled={isUploading}
@@ -195,35 +188,35 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
 
         {!selectedFile ? (
           <div className="flex flex-col items-center justify-center py-4 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shadow-md border border-blue-500/20">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shadow-md border border-violet-500/20">
               <Upload className="h-7 w-7" />
             </div>
             <p className="text-base font-bold text-foreground mb-1">
-              Drag & drop any medical document or scan here
+              Drag & drop your lab report PDF or photo here
             </p>
             <p className="text-xs text-muted-foreground mb-4 max-w-sm">
-              All records are encrypted at rest with 256-bit security. AI automatically classifies medical records and indexes full text.
+              Our AI OCR engine recognizes tabular blood tests, lipid profiles, urinalysis panels, and flags abnormal values automatically.
             </p>
             <Button
               type="button"
               variant="outline"
-              className="rounded-full px-6 h-9 font-semibold text-xs border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 shadow-sm"
+              className="rounded-full px-6 h-9 font-semibold text-xs border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10 shadow-sm"
               onClick={(e) => {
                 e.stopPropagation();
                 inputRef.current?.click();
               }}
             >
-              Browse Vault Files
+              Browse Lab Files
             </Button>
             <p className="mt-3 text-[10px] text-muted-foreground font-semibold">
-              Supported Formats: PDF, JPG, PNG, WebP, TIFF • Max Size: 25MB
+              Supported Formats: PDF, JPG, PNG, WebP • Max Size: 25MB
             </p>
           </div>
         ) : (
           <div className="w-full space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-background/90 border border-blue-500/30 shadow-md">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-background/90 border border-violet-500/30 shadow-md">
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 shrink-0">
                   <File className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
@@ -231,7 +224,7 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
                     {selectedFile.name}
                   </p>
                   <p className="text-xs text-muted-foreground font-medium">
-                    {formatSize(selectedFile.size)} • Folder: <span className="text-blue-500 font-semibold uppercase">{targetCategory === "AUTO" ? "AI Auto" : targetCategory}</span>
+                    {formatSize(selectedFile.size)} • Tagged: <span className="text-violet-500 font-semibold uppercase">{systemTag}</span>
                   </p>
                 </div>
               </div>
@@ -250,26 +243,26 @@ export function DocumentUploader({ onUpload, isUploading, onCancel }: DocumentUp
             </div>
 
             {isUploading ? (
-              <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 space-y-3 text-center">
-                <div className="flex items-center justify-center gap-3 text-blue-600 dark:text-blue-400 font-bold text-sm">
-                  <span className="animate-spin text-lg">⚙️</span>
-                  AI OCR Vault Engine Indexing & Archiving Record...
+              <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/30 space-y-3 text-center">
+                <div className="flex items-center justify-center gap-3 text-violet-600 dark:text-violet-400 font-bold text-sm">
+                  <span className="animate-spin text-lg">🧬</span>
+                  AI Diagnostic Engine Scanning & Extracting Biomarker Ranges...
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-full animate-pulse w-3/4" />
+                  <div className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 rounded-full animate-pulse w-3/4" />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Please keep this window open. Encrypted vault indexing completes in ~3-5 seconds.
+                  Please keep this window open. Tabular biomarker extraction completes in ~3-5 seconds.
                 </p>
               </div>
             ) : (
               <Button
                 type="button"
                 onClick={handleUploadClick}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 gap-2"
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white font-bold text-sm shadow-lg shadow-violet-500/25 gap-2"
               >
-                <Database className="h-4 w-4" />
-                Secure & Archive to AI Vault
+                <FlaskConical className="h-4 w-4" />
+                Extract Biomarkers to Lab Studio
               </Button>
             )}
           </div>

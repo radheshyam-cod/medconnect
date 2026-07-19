@@ -112,21 +112,29 @@ export class OcrService {
           existingMedications.map((m) => m.name.toLowerCase().trim()),
         );
 
-        const newMedicines = (structuredData.medicines as string[]).filter(
-          (name) => name && !existingNames.has(name.toLowerCase().trim()),
-        );
+        const newMedicines = (structuredData.medicines as Array<Record<string, unknown> | string>).filter((item) => {
+          const name = typeof item === 'string' ? item : (typeof item === 'object' && item !== null ? String(item.name || '') : '');
+          return name && !existingNames.has(name.toLowerCase().trim());
+        });
 
         if (newMedicines.length > 0) {
           await this.prisma.medication.createMany({
-            data: newMedicines.map((name) => ({
-              userId: doc.userId,
-              name: name.trim(),
-              isActive: true,
-              documentId: doc.id,
-            })),
+            data: newMedicines.map((item) => {
+              const nameStr = typeof item === 'string' ? item : (typeof item === 'object' && item !== null ? String(item.name || 'Prescription Medication') : 'Prescription Medication');
+              const dosageStr = (typeof item === 'object' && item !== null && typeof item.dosage === 'string' && item.dosage.trim()) ? item.dosage : 'As prescribed';
+              const freqStr = (typeof item === 'object' && item !== null && typeof item.frequency === 'string' && item.frequency.trim()) ? item.frequency : 'Daily';
+              return {
+                userId: doc.userId,
+                name: nameStr.trim(),
+                dosage: dosageStr.trim() || 'As prescribed',
+                frequency: freqStr.trim() || 'Daily',
+                isActive: true,
+                documentId: doc.id,
+              };
+            }),
           });
           this.logger.log(
-            `Auto-created ${newMedicines.length} medication(s) from document ${documentId}`,
+            `Auto-created ${newMedicines.length} medication(s) with dosage and frequency from document ${documentId}`,
           );
         }
       }
@@ -134,23 +142,23 @@ export class OcrService {
       // 4c. Auto-create LabResult records from extracted labValues
       if (structuredData.labValues && Array.isArray(structuredData.labValues) && structuredData.labValues.length > 0) {
         try {
-          const labValues = structuredData.labValues as any[];
-          // For each labValue, if it's an object with testName and value, create a LabResult
+          const labValues = structuredData.labValues as Array<Record<string, unknown>>;
           const validLabs = labValues.filter(l => typeof l === 'object' && l !== null && l.testName && l.value);
           
           if (validLabs.length > 0) {
             await this.prisma.labResult.createMany({
               data: validLabs.map((lab) => ({
                 userId: doc.userId,
-                testName: lab.testName,
-                value: String(lab.value),
-                unit: lab.unit || null,
+                testName: String(lab.testName || 'Laboratory Test'),
+                value: String(lab.value || 'Normal'),
+                unit: typeof lab.unit === 'string' ? lab.unit : null,
+                referenceRange: (typeof lab.referenceRange === 'string' && lab.referenceRange.trim() ? lab.referenceRange : typeof lab.range === 'string' && lab.range.trim() ? lab.range : 'Standard reference range'),
                 isAbnormal: Boolean(lab.isAbnormal),
                 date: doc.documentDate || new Date(), // use doc date if available
               })),
             });
             this.logger.log(
-              `Auto-created ${validLabs.length} lab result(s) from document ${documentId}`,
+              `Auto-created ${validLabs.length} lab result(s) with reference ranges from document ${documentId}`,
             );
           }
         } catch(e) {

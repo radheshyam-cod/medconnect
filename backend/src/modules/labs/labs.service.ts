@@ -25,11 +25,30 @@ export class LabsService {
     return user.id;
   }
 
+  private getDefaultReferenceRange(testName: string): string {
+    const name = testName.toLowerCase();
+    if (name.includes('hba1c') || name.includes('a1c')) return '< 5.7%';
+    if (name.includes('glucose') || name.includes('sugar')) return '70 - 99 mg/dL';
+    if (name.includes('cholesterol')) return '< 200 mg/dL';
+    if (name.includes('hemoglobin') || name.includes('hb')) return '13.5 - 17.5 g/dL';
+    if (name.includes('platelet')) return '150 - 450 thousand/uL';
+    if (name.includes('white blood') || name.includes('wbc')) return '4.5 - 11.0 thousand/uL';
+    if (name.includes('creatinine')) return '0.74 - 1.35 mg/dL';
+    if (name.includes('vitamin d')) return '30 - 100 ng/mL';
+    if (name.includes('blood pressure') || name.includes('bp')) return '120/80 mmHg';
+    return 'Standard reference range';
+  }
+
   async create(createLabDto: CreateLabDto, clerkId: string) {
     const userId = await this.getInternalUserId(clerkId);
+    const referenceRange = (createLabDto.referenceRange && createLabDto.referenceRange.trim())
+      ? createLabDto.referenceRange
+      : this.getDefaultReferenceRange(createLabDto.testName);
+
     const labResult = await this.prisma.labResult.create({
       data: {
         ...(createLabDto as unknown as Prisma.LabResultUncheckedCreateInput),
+        referenceRange,
         userId,
       },
     });
@@ -46,7 +65,10 @@ export class LabsService {
     });
     this.memoryLogger.debug('LAB_MEMORY_SYNC_TRIGGERED', { labId: labResult.id });
 
-    return labResult;
+    return {
+      ...labResult,
+      referenceRange: labResult.referenceRange || this.getDefaultReferenceRange(labResult.testName),
+    };
   }
 
   async findAll(clerkId: string, options: { page: number, limit: number, patientId?: string }) {
@@ -71,8 +93,13 @@ export class LabsService {
       this.prisma.labResult.count({ where: { userId: targetUserId } })
     ]);
 
+    const normalizedResults = results.map((lab) => ({
+      ...lab,
+      referenceRange: lab.referenceRange?.trim() ? lab.referenceRange : this.getDefaultReferenceRange(lab.testName),
+    }));
+
     return {
-      results,
+      results: normalizedResults,
       total,
       page: options.page,
       limit: options.limit
@@ -112,7 +139,10 @@ export class LabsService {
       where: { id, userId: targetUserId },
     });
     if (!lab) throw new NotFoundException('Lab result not found');
-    return lab;
+    return {
+      ...lab,
+      referenceRange: lab.referenceRange?.trim() ? lab.referenceRange : this.getDefaultReferenceRange(lab.testName),
+    };
   }
 
   async update(id: string, updateLabDto: UpdateLabDto, clerkId: string) {

@@ -184,6 +184,35 @@ export function useVoice(options?: {
     cleanupRecorder();
   }, [cleanupRecorder]);
 
+  const playAudioFromBase64 = useCallback(
+    (base64: string, mimeType: string): Promise<void> => {
+      return new Promise((resolve) => {
+        try {
+          const audioUrl = `data:${mimeType};base64,${base64}`;
+          const audio = new Audio(audioUrl);
+          setStatus("speaking");
+
+          audio.onended = () => {
+            setStatus("idle");
+            resolve();
+          };
+          audio.onerror = () => {
+            setStatus("idle");
+            resolve();
+          };
+          audio.play().catch(() => {
+            setStatus("idle");
+            resolve();
+          });
+        } catch {
+          setStatus("idle");
+          resolve();
+        }
+      });
+    },
+    [],
+  );
+
   const sendAudio = useCallback(async () => {
     const blob = audioBlobRef.current;
     if (!blob || blob.size === 0) {
@@ -238,7 +267,7 @@ export function useVoice(options?: {
     } finally {
       setIsProcessing(false);
     }
-  }, [conversationId, languageCode, voice]);
+  }, [conversationId, languageCode, voice, playAudioFromBase64]);
 
   const sendText = useCallback(async (text: string, overrideLang?: string) => {
     if (!text.trim()) return;
@@ -292,36 +321,7 @@ export function useVoice(options?: {
     } finally {
       setIsProcessing(false);
     }
-  }, [conversationId, languageCode, voice]);
-
-  const playAudioFromBase64 = useCallback(
-    (base64: string, mimeType: string): Promise<void> => {
-      return new Promise((resolve) => {
-        try {
-          const audioUrl = `data:${mimeType};base64,${base64}`;
-          const audio = new Audio(audioUrl);
-          setStatus("speaking");
-
-          audio.onended = () => {
-            setStatus("idle");
-            resolve();
-          };
-          audio.onerror = () => {
-            setStatus("idle");
-            resolve();
-          };
-          audio.play().catch(() => {
-            setStatus("idle");
-            resolve();
-          });
-        } catch {
-          setStatus("idle");
-          resolve();
-        }
-      });
-    },
-    [],
-  );
+  }, [conversationId, languageCode, voice, playAudioFromBase64]);
 
   const playAudio = useCallback(
     async (audioBase64: string, mimeType: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api-client";
-import { Heart, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      api.auth.sync({
+        email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || "",
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.primaryPhoneNumber?.phoneNumber || user.phoneNumbers?.[0]?.phoneNumber || "",
+      }).then((res) => {
+        if (res.isOnboarded) {
+          router.push("/dashboard");
+        }
+      }).catch((err) => console.error("Failed to sync user on onboarding:", err));
+    }
+  }, [isLoaded, user, router]);
 
   const [formData, setFormData] = useState({
     dateOfBirth: "",
@@ -64,8 +80,15 @@ export default function OnboardingPage() {
 
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Heart className="h-6 w-6 text-primary" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/60 shadow-sm border border-blue-100 dark:border-blue-900/40 shrink-0 transition-transform hover:scale-105">
+            <Image
+              src="/logo.png"
+              alt="MedConnect Logo"
+              width={36}
+              height={36}
+              className="h-8 w-8 object-contain shrink-0"
+              priority
+            />
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">Welcome to MedConnect</h1>
           <p className="text-muted-foreground mt-2">

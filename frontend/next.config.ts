@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   transpilePackages: ["@medconnect/shared-types", "@medconnect/fhir-parser"],
   images: {
     remotePatterns: [

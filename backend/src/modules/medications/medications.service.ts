@@ -25,9 +25,14 @@ export class MedicationsService {
 
   async create(createMedicationDto: CreateMedicationDto, clerkId: string) {
     const userId = await this.getInternalUserId(clerkId);
+    const dosage = (createMedicationDto.dosage && createMedicationDto.dosage.trim()) ? createMedicationDto.dosage : 'As prescribed';
+    const frequency = (createMedicationDto.frequency && createMedicationDto.frequency.trim()) ? createMedicationDto.frequency : 'Daily';
+
     const medication = await this.prisma.medication.create({
       data: {
         ...(createMedicationDto as unknown as Prisma.MedicationUncheckedCreateInput),
+        dosage,
+        frequency,
         userId,
       },
     });
@@ -43,7 +48,11 @@ export class MedicationsService {
     });
     this.memoryLogger.debug('MEDICATION_MEMORY_SYNC_TRIGGERED', { medicationId: medication.id });
 
-    return medication;
+    return {
+      ...medication,
+      dosage: medication.dosage || 'As prescribed',
+      frequency: medication.frequency || 'Daily',
+    };
   }
 
   async findAll(clerkId: string, options?: { isActive?: boolean; patientId?: string }) {
@@ -70,7 +79,7 @@ export class MedicationsService {
           isActive: false,
         },
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors for auto-update
     }
 
@@ -79,10 +88,16 @@ export class MedicationsService {
       where.isActive = options.isActive;
     }
 
-    return this.prisma.medication.findMany({
+    const medications = await this.prisma.medication.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
+
+    return medications.map((med) => ({
+      ...med,
+      dosage: med.dosage?.trim() ? med.dosage : 'As prescribed',
+      frequency: med.frequency?.trim() ? med.frequency : 'Daily',
+    }));
   }
 
   async findOne(id: string, clerkId: string, patientId?: string) {
@@ -99,7 +114,11 @@ export class MedicationsService {
       where: { id, userId: targetUserId },
     });
     if (!medication) throw new NotFoundException('Medication not found');
-    return medication;
+    return {
+      ...medication,
+      dosage: medication.dosage?.trim() ? medication.dosage : 'As prescribed',
+      frequency: medication.frequency?.trim() ? medication.frequency : 'Daily',
+    };
   }
 
   async update(id: string, updateMedicationDto: UpdateMedicationDto, clerkId: string) {
