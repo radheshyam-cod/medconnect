@@ -1,29 +1,25 @@
-import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
-import {
-  CONTEXT_PROVIDER_TOKEN,
-  IContextProvider,
-} from './context-provider.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import { IContextProvider } from './context-provider.interface';
 import { ContextHealthService } from './context-health.service';
+
+import { Mem0ContextProvider } from './mem0-context.provider';
+import { AlchemystContextProvider } from './alchemyst-context.provider';
 
 /**
  * Registry for all registered IContextProvider instances.
- *
- * Providers are injected via the CONTEXT_PROVIDER_TOKEN multi-provider
- * token — the registry has zero knowledge of concrete implementation
- * classes. Adding a new provider only requires registering it in
- * the module under the same token.
  */
 @Injectable()
 export class ProviderRegistry {
   private readonly logger = new Logger(ProviderRegistry.name);
+  private readonly allProviders: IContextProvider[];
 
   constructor(
-    @Inject(CONTEXT_PROVIDER_TOKEN)
-    @Optional()
-    private readonly allProviders: IContextProvider[],
+    private readonly mem0: Mem0ContextProvider,
+    private readonly alchemyst: AlchemystContextProvider,
     private readonly healthService: ContextHealthService,
   ) {
-    for (const p of (allProviders ?? [])) {
+    this.allProviders = [this.mem0, this.alchemyst];
+    for (const p of this.allProviders) {
       this.logger.log(
         `Registered context provider: ${p.name} v${p.version} (available: ${p.isAvailable})`,
       );
