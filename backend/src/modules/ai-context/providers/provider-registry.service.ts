@@ -1,37 +1,63 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { IContextProvider } from './context-provider.interface';
-import { Mem0ContextProvider } from './mem0-context.provider';
-import { AlchemystContextProvider } from './alchemyst-context.provider';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import {
+  CONTEXT_PROVIDER_TOKEN,
+  IContextProvider,
+} from './context-provider.interface';
+import { ContextHealthService } from './context-health.service';
 
+/**
+ * Registry for all registered IContextProvider instances.
+ *
+ * Providers are injected via the CONTEXT_PROVIDER_TOKEN multi-provider
+ * token — the registry has zero knowledge of concrete implementation
+ * classes. Adding a new provider only requires registering it in
+ * the module under the same token.
+ */
 @Injectable()
-export class ProviderRegistry implements OnModuleInit {
+export class ProviderRegistry {
   private readonly logger = new Logger(ProviderRegistry.name);
-  private providers: Map<string, IContextProvider> = new Map();
 
   constructor(
-    private readonly mem0Provider: Mem0ContextProvider,
-    private readonly alchemystProvider: AlchemystContextProvider,
-  ) {}
-
-  onModuleInit() {
-    this.register(this.mem0Provider);
-    this.register(this.alchemystProvider);
-  }
-
-  register(provider: IContextProvider): void {
-    if (this.providers.has(provider.name)) {
-      this.logger.warn(`Provider ${provider.name} is already registered. Overwriting.`);
+    @Inject(CONTEXT_PROVIDER_TOKEN)
+    @Optional()
+    private readonly allProviders: IContextProvider[],
+    private readonly healthService: ContextHealthService,
+  ) {
+    for (const p of (allProviders ?? [])) {
+      this.logger.log(
+        `Registered context provider: ${p.name} v${p.version} (available: ${p.isAvailable})`,
+      );
     }
-    this.providers.set(provider.name, provider);
-    this.logger.log(`Registered Context Provider: ${provider.name}`);
   }
 
+  /**
+   * Return all providers that are available AND not currently
+   * circuit-broken ('down'). The aggregator uses this to decide
+   * which providers to call in parallel.
+   */
   getProviders(): IContextProvider[] {
-    return Array.from(this.providers.values()).filter(p => p.isAvailable);
+    return (this.allProviders ?? []).filter((p) => {
+      if (!p.isAvailable) return false;
+      if (this.healthService.shouldSkip(p.name)) return false;
+      return true;
+    });
   }
 
+  /**
+   * Look up a single provider by name. Returns undefined if the
+   * provider is unavailable or currently circuit-broken.
+   */
   getProvider(name: string): IContextProvider | undefined {
-    const provider = this.providers.get(name);
-    return provider?.isAvailable ? provider : undefined;
+    return (this.allProviders ?? []).find(
+      (p) => p.name === name && p.isAvailable && !this.healthService.shouldSkip(p.name),
+    );
+  }
+
+  /**
+   * Return ALL registered providers regardless of health (for
+   * health dashboard or admin endpoints).
+   */
+  getAllProviders(): IContextProvider[] {
+    return this.allProviders ?? [];
   }
 }

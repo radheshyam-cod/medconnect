@@ -225,7 +225,7 @@ export class MemorySanitizer {
     return result;
   }
 
-  private normalizeMedicalTerm(term: string): string {
+  normalizeMedicalTerm(term: string): string {
     return term
       .trim()
       .replace(/\s+/g, ' ')
@@ -233,7 +233,7 @@ export class MemorySanitizer {
       .replace(/^[\s,;:.]+|[\s,;:.]+$/g, '');
   }
 
-  private normalizeMedicineName(name: string): string {
+  normalizeMedicineName(name: string): string {
     // Remove common OCR noise from medicine names
     return name
       .trim()

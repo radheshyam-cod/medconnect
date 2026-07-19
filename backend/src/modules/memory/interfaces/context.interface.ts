@@ -1,8 +1,5 @@
 import { MemorySearchResult } from './memory.interface';
 
-export const MEM0_PROVIDER_TOKEN = 'MEM0_PROVIDER_TOKEN';
-export const ALCHEMYST_PROVIDER_TOKEN = 'ALCHEMYST_PROVIDER_TOKEN';
-
 export interface IContextProvider {
   name: string;
   isAvailable: boolean;

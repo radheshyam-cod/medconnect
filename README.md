@@ -145,10 +145,12 @@ The platform addresses a critical gap in Indian healthcare: **fragmented, paper-
 <details>
 <summary><strong>🧠 AI Context & Memory</strong></summary>
 
-- **Mem0 Integration:** Long-term memory of patient facts for context-aware AI processing
-- **Multi-provider Fallback:** Mem0 and Alchemyst context providers with health checks and automatic fallback
-- **Context-aware Prompts:** Extraction, timeline, and summary prompts enriched with patient history
-- **Background Processing:** BullMQ queues for non-blocking AI operations
+- **Context Aggregator:** 10-step pipeline — PostgreSQL query (source of truth), parallel provider queries, deduplication by canonical hash, conflict resolution (PostgreSQL wins), confidence scoring (source + agreement + recency), entity normalization (MemorySanitizer), relevance ranking, token-budget compression (30K tokens)
+- **Multi-provider Architecture:** Mem0 and Alchemyst providers registered via `CONTEXT_PROVIDER_TOKEN` — zero direct references from consumers. Adding a new provider requires only module registration.
+- **Circuit Breaker:** Each provider has independent health tracking — 3 consecutive failures trips the breaker for 60 seconds. Degraded/down providers are skipped automatically.
+- **Sync Gate:** Only validated facts are synced to external providers — confidence ≥ 0.8, source ≠ raw OCR, extraction status = COMPLETED, meta + hash required.
+- **Context-aware Prompts:** Extraction, timeline, and summary prompts enriched with patient history from the aggregated context.
+- **Background Processing:** BullMQ queues for non-blocking AI operations and context sync.
 </details>
 
 <details>
@@ -199,7 +201,7 @@ The platform addresses a critical gap in Indian healthcare: **fragmented, paper-
 | [Supabase Storage](https://supabase.com/storage) | File storage for uploaded documents |
 | [Clerk Backend SDK](https://clerk.com/docs/backend-requests/overview) | JWT verification via JWKS |
 | [Mem0](https://mem0.ai/) | Long-term memory for patient context |
-| [Alchemyst AI](https://alchemyst.ai/) | Alternative context provider (fallback) |
+| [Alchemyst AI](https://alchemyst.ai/) | Alternative context provider (verified via live API test — search 200 OK, add 201 Created, write→read round-trip confirmed) |
 | [Gnani AI](https://gnani.ai/) | Indian voice AI (STT/TTS) |
 | [Swagger/OpenAPI](https://swagger.io/) | Auto-generated API documentation |
 | [Helmet](https://helmetjs.github.io/) | Security headers |
@@ -251,12 +253,26 @@ graph TB
             FHIR[FHIR Module]
         end
         
-        subgraph Context ["AI Context Layer"]
+        subgraph ContextLayer ["AI Context Layer"]
             CTX_AGG[Context Aggregator]
             PROMPT[Prompt Builder]
+            REG[Provider Registry<br/>CONTEXT_PROVIDER_TOKEN]
             MEM0[Mem0 Provider]
             ALCHEM[Alchemyst Provider]
-            SYNC[Context Synchronizer]
+            HEALTH[Context Health Service<br/>Circuit Breaker]
+            SYNC[Context Synchronizer<br/>Sync Gate]
+        end
+
+        subgraph Pipeline ["Aggregation Pipeline (10 steps)"]
+            A1["(a) PostgreSQL Query<br/>Source of Truth"]
+            A2["(b) Parallel Providers<br/>Mem0 + Alchemyst"]
+            A3["(c) Collect Facts"]
+            A4["(d+e) Dedup + Resolve<br/>PG > Provider > Confidence > Recent"]
+            A5["(f) Confidence Score<br/>Source + Agreement + Recency"]
+            A6["(g) Normalize<br/>MemorySanitizer"]
+            A7["(h) Rank by Relevance"]
+            A8["(i) Compress<br/>30K Token Budget"]
+            A9["(j) Build MedicalContext"]
         end
         
         subgraph Jobs ["Background Jobs (BullMQ)"]
@@ -298,12 +314,25 @@ graph TB
     OCR --> AI
     OCR --> SUPABASE
     AI --> GEMINI
-    CTX_AGG --> MEM0
-    CTX_AGG --> ALCHEM
+
+    CTX_AGG --> A1
+    A1 --> A2
+    A2 --> A3
+    A3 --> A4
+    A4 --> A5
+    A5 --> A6
+    A6 --> A7
+    A7 --> A8
+    A8 --> A9
+
+    CTX_AGG --> REG
+    REG --> MEM0
+    REG --> ALCHEM
+    HEALTH --> REG
     CTX_AGG --> PROMPT
     CTX_AGG --> SYNC
-    SYNC --> MEM0_SVC
-    SYNC --> ALCHEM_SVC
+    SYNC --> MEM0
+    SYNC --> ALCHEM
     AI --> MEM0_SVC
 
     OCR --> OCR_Q
@@ -324,7 +353,10 @@ graph TB
 - **Guard-based Auth:** Global `ClerkAuthGuard` with `@Public()` decorator for skip-auth routes. `@CurrentUser()` decorator injects the authenticated user.
 - **Interceptor Pattern:** Global `TransformInterceptor` wraps all responses in `{ data: ... }` automatically. Exception filter provides consistent error structure.
 - **Multi-model AI Fallback:** The Gemini service chains through models (`gemini-3.5-flash` → `gemini-3.1-flash-lite` → ...) if one fails.
-- **Context Aggregation:** AI prompts are enriched with patient context from multiple providers (Mem0, Alchemyst) with health checks and automatic fallback.
+- **Context Aggregation Pipeline:** A 10-step pipeline (PostgreSQL query → parallel providers → dedup → resolve → confidence → normalize → rank → compress → build) produces a single `MedicalContext` enriched from all sources.
+- **Provider Pattern via Injection Token:** All context providers (Mem0, Alchemyst) register under `CONTEXT_PROVIDER_TOKEN` with `multi: true`. The `ProviderRegistry` has zero knowledge of concrete implementation classes — adding a new provider only requires module registration.
+- **Circuit Breaker on Providers:** Each provider has independent health tracking with `ContextHealthService`. Three consecutive failures trip the breaker for a 60-second skip window. Degraded/down providers are automatically excluded from aggregation calls.
+- **Sync Gate for Data Quality:** The `ContextSynchronizer` validates all data before syncing to external providers. Items with confidence < 0.8, source = raw OCR, or incomplete extraction status are filtered out. `triggerSync()` is private — all syncs must pass through the gate.
 - **Background Processing:** Long-running operations (OCR, AI generation, sync) are queued via BullMQ to keep API responsiveness.
 - **Patient Context Switching:** A React context provider manages the "viewing as" patient, invalidating all React Query caches on switch.
 
@@ -376,11 +408,18 @@ medconnect-india/
 │   │   │   ├── dto/                  # Shared DTOs (pagination, API response)
 │   │   │   ├── filters/             # Global exception filter
 │   │   │   ├── guards/              # ClerkAuthGuard (JWT verification via JWKS)
-│   │   │   └── interceptors/        # TransformInterceptor ({ data: ... } wrapper)
-│   │   └── modules/
-│   │       ├── ai/                  # Gemini service (multi-model fallback)
-│   │       ├── ai-context/          # AI context aggregation (Mem0, Alchemyst)
-│   │       ├── auth/                # Clerk strategy, sync, onboarding
+│   │   │   └── interceptors/        # TransformInterceptor ({ data: ... } wrapper)│   │       └── modules/
+│   │           ├── ai/                  # Gemini service (multi-model fallback)
+│   │           ├── ai-context/          # AI context aggregation pipeline
+│   │           │   ├── providers/       # Mem0ContextProvider, AlchemystContextProvider
+│   │           │   ├── dto/            # MedicalContext, ContextMetadata
+│   │           │   ├── context-aggregator.service.ts  # 10-step aggregation pipeline
+│   │           │   ├── context-synchronizer.service.ts # Sync gate + BullMQ integration
+│   │           │   ├── context-health.service.ts       # Circuit breaker per provider
+│   │           │   ├── provider-registry.service.ts    # CONTEXT_PROVIDER_TOKEN registry
+│   │           │   ├── prompt-builder.service.ts       # Context-enriched prompts
+│   │           │   └── ai-context.service.ts           # Facade for consumers
+│   │           ├── auth/               # Clerk strategy, sync, onboarding
 │   │       ├── dashboard/           # Dashboard stats, health score
 │   │       ├── database/            # Prisma service & module
 │   │       ├── documents/           # Document CRUD, upload, download
