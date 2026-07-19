@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { BullModule } from '@nestjs/bullmq';
+import Redis from 'ioredis';
 
 import { PrismaModule } from "./modules/database/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -50,12 +51,20 @@ import { VoiceModule } from './modules/voice/voice.module';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return {
+            connection: new Redis(redisUrl, { maxRetriesPerRequest: null })
+          };
+        }
+        return {
+          connection: {
+            host: config.get<string>('REDIS_HOST', 'localhost'),
+            port: config.get<number>('REDIS_PORT', 6379),
+          }
+        };
+      },
     }),
 
     // ─── Database ───
