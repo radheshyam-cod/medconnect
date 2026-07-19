@@ -112,12 +112,18 @@ export class AuthController {
     @CurrentUser("id") clerkId: string,
     @Body() dto: OnboardDto
   ) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { clerkId }
     });
 
     if (!user) {
-      throw new Error("User not found");
+      user = await this.prisma.user.create({
+        data: {
+          clerkId,
+          email: `${clerkId}@medconnect.user`,
+          fullName: "Patient",
+        }
+      });
     }
 
     const patientProfile = await this.prisma.patientProfile.upsert({
