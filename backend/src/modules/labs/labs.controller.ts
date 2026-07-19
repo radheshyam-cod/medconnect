@@ -27,6 +27,14 @@ export class LabsController {
     });
   }
 
+  @Get('insights')
+  getInsights(
+    @CurrentUser('id') clerkId: string,
+    @Query('patientId') patientId?: string,
+  ) {
+    return this.labsService.generateInsights(clerkId, patientId);
+  }
+
   @Get(':id')
   findOne(
     @Param('id') id: string, 

@@ -440,6 +440,8 @@ export const labs = {
 
   get: (id: string) => request<LabItem>(`/labs/${id}`),
 
+  getInsights: () => request<any>("/labs/insights"),
+
   create: (data: {
     testName: string;
     value: string;

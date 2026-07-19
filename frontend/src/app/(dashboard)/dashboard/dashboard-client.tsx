@@ -93,12 +93,38 @@ export function DashboardClient() {
 
   // AI Insights logic
   const recs = aiSummary?.recommendations || [];
-  const insights = [
-    { title: "Great job!", text: recs[0] || "Your HbA1c levels are under control.", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { title: "Stay active", text: recs[1] || "30 min daily walk can improve heart health.", icon: Footprints, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { title: "Vitamin D is low", text: recs[2] || "Consider 15 min of sunlight daily.", icon: Sun, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { title: "Hydration reminder", text: recs[3] || "Drink more water throughout the day.", icon: Droplets, color: "text-cyan-500", bg: "bg-cyan-500/10" },
+  
+  // Base generic positive recommendations if AI doesn't provide enough
+  const genericRecs = [
+    { title: "Keep it up", text: "Continue your current healthy routines.", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { title: "Stay active", text: "A 30-min daily walk improves cardiovascular health.", icon: Footprints, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { title: "Stay hydrated", text: "Drink adequate water throughout the day.", icon: Droplets, color: "text-cyan-500", bg: "bg-cyan-500/10" },
+    { title: "Rest well", text: "Ensure 7-8 hours of sleep for optimal recovery.", icon: CheckCircle2, color: "text-purple-500", bg: "bg-purple-500/10" },
   ];
+
+  // Map AI recommendations and fallback to generic ones
+  const insights = genericRecs.map((generic, i) => {
+    if (recs[i]) {
+      const text = recs[i];
+      let icon = Sparkles;
+      let color = "text-indigo-500";
+      let bg = "bg-indigo-500/10";
+      
+      const lower = text.toLowerCase();
+      if (lower.includes("water") || lower.includes("hydrat")) { icon = Droplets; color = "text-cyan-500"; bg = "bg-cyan-500/10"; }
+      else if (lower.includes("walk") || lower.includes("exercis") || lower.includes("activ")) { icon = Footprints; color = "text-blue-500"; bg = "bg-blue-500/10"; }
+      else if (lower.includes("sleep") || lower.includes("rest")) { icon = Sun; color = "text-purple-500"; bg = "bg-purple-500/10"; }
+      else if (lower.includes("diet") || lower.includes("eat") || lower.includes("vitamin")) { icon = Activity; color = "text-amber-500"; bg = "bg-amber-500/10"; }
+      else if (lower.includes("good") || lower.includes("normal") || lower.includes("continue")) { icon = CheckCircle2; color = "text-emerald-500"; bg = "bg-emerald-500/10"; }
+      
+      return {
+        title: "AI Suggestion",
+        text: text,
+        icon, color, bg
+      };
+    }
+    return generic;
+  });
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1500px] mx-auto pb-24 px-2">
