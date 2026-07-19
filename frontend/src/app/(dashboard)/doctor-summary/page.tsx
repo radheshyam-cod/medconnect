@@ -26,7 +26,7 @@ import {
   User,
   Shield,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/premium/page-skeleton";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -58,8 +58,8 @@ export default function DoctorSummaryPage() {
 
   const handlePrint = () => window.print();
   const handleDownload = () => {
-    const activeDiagnosesList = conditions.length > 0 ? conditions : ['General Health Maintenance (No active chronic diagnoses reported)'];
-    const medsList = medications.length > 0 ? medications : [{ name: 'No current medications on file', dosage: 'As prescribed', frequency: 'Daily' }];
+    const activeDiagnosesList = conditions.length > 0 ? conditions : ['No active chronic diagnoses reported'];
+    const medsList = medications.length > 0 ? medications : ['No current medications on file'];
     
     // Generate a text version
     const text = [
@@ -197,12 +197,14 @@ export default function DoctorSummaryPage() {
                 <div>
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Active Diagnoses & Conditions</h4>
                   <div className="space-y-2">
-                    {(conditions.length > 0 ? conditions : ['General Health Maintenance (No active chronic diagnoses reported)']).map((c: any, i: number) => (
+                    {conditions.length > 0 ? conditions.map((c: any, i: number) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
                         <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                         <span className="font-medium text-foreground">{typeof c === 'string' ? c : (c.condition || c.name || JSON.stringify(c))}</span>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-sm text-muted-foreground italic">No active diagnoses reported.</p>
+                    )}
                   </div>
                 </div>
 
@@ -265,18 +267,28 @@ export default function DoctorSummaryPage() {
               <CardContent className="pt-6">
                 {medications.length > 0 ? (
                   <ul className="space-y-3">
-                    {medications.map((m: any, i: number) => (
-                      <li key={i} className="flex flex-col gap-1 text-sm border-b pb-3 last:border-0">
-                        <span className="font-semibold text-primary">
-                          {m.name || m.medication || JSON.stringify(m)}
-                        </span>
-                        {m.dosage && (
-                          <span className="text-xs text-muted-foreground">
-                            {m.dosage}{m.frequency ? ` • ${m.frequency}` : ""}
+                    {medications.map((m: any, i: number) => {
+                      const rawDosage = typeof m === 'object' && m?.dosage && m.dosage !== '-' ? m.dosage : 'As prescribed';
+                      const isMissingDosage = m?.isMissingDosage || rawDosage === 'As prescribed' || rawDosage === '-' || rawDosage.includes('Missing exact dosage');
+                      const dosageDisplay = isMissingDosage ? 'Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")' : rawDosage;
+                      return (
+                        <li key={i} className="flex flex-col gap-1 text-sm border-b pb-3 last:border-0">
+                          <div className="flex justify-between items-start">
+                            <span className="font-semibold text-primary">
+                              {m.name || m.medication || JSON.stringify(m)}
+                            </span>
+                            {isMissingDosage && (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                Missing Dosage Info
+                              </Badge>
+                            )}
+                          </div>
+                          <span className={cn("text-xs", isMissingDosage ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground")}>
+                            {dosageDisplay}{m.frequency ? ` • ${m.frequency}` : ""}
                           </span>
-                        )}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No current medications on file.</p>

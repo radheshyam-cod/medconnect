@@ -33,7 +33,7 @@ export class SummaryService {
 
     if (extractions.length === 0) {
       const defaultSummary = {
-        currentConditions: ["General Health Maintenance (No active chronic diagnoses reported)"],
+        currentConditions: [],
         currentMedicines: [],
         allergies: [],
         recentLabs: [],
@@ -41,22 +41,20 @@ export class SummaryService {
         pastSurgeries: [],
         vitalSigns: [],
         immunizations: [],
-        summary: "No medical records found to summarize yet. Please upload clinical documents or prescriptions to generate insights."
+        summary: "No medical documents provided yet. Please upload clinical documents or prescriptions to generate insights."
       };
       return defaultSummary;
     }
 
     const structuredSummary = await this.aiService.summarizePatientHistory(extractions, type, userId);
 
-    const summaryAny = structuredSummary as any;
+    const summaryAny = structuredSummary as Record<string, unknown>;
     if (type === 'DOCTOR' && structuredSummary) {
       try {
         await this.prisma.doctorSummary.create({
           data: {
             userId,
-            currentConditions: (Array.isArray(summaryAny.currentConditions) && summaryAny.currentConditions.length > 0)
-              ? summaryAny.currentConditions
-              : ["General Health Maintenance (No active chronic diagnoses reported)"],
+            currentConditions: Array.isArray(summaryAny.currentConditions) ? summaryAny.currentConditions : [],
             currentMedicines: summaryAny.currentMedicines || [],
             allergies: summaryAny.allergies || [],
             recentLabs: summaryAny.recentLabs || [],

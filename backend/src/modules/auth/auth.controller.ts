@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from "@nestjs/common";
+import { Controller, Post, Get, Body } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { PrismaService } from "../database/prisma.service";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -103,7 +103,7 @@ export class AuthController {
     
     // Check if onboarded (i.e. has a patient profile)
     const isOnboarded = !!finalUser.patientProfile;
-    return { success: true, userId: finalUser.id, isOnboarded };
+    return { success: true, userId: finalUser.id, isOnboarded, patientProfile: finalUser.patientProfile };
   }
 
   @Post("onboard")
@@ -140,5 +140,15 @@ export class AuthController {
     });
 
     return { success: true, patientProfile };
+  }
+
+  @Get("profile")
+  @ApiOperation({ summary: "Get current user profile and patient profile" })
+  async getProfile(@CurrentUser("id") clerkId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { clerkId },
+      include: { patientProfile: true }
+    });
+    return { success: true, user, patientProfile: user?.patientProfile || null };
   }
 }

@@ -52,6 +52,7 @@ export interface DashboardStats {
     isAbnormal: boolean;
     date: string;
   }>;
+  patientProfile?: any;
 }
 
 export interface DocumentItem {
@@ -524,7 +525,7 @@ export const sharing = {
 
 export const auth = {
   sync: (data: { email: string; firstName?: string; lastName?: string; phone?: string }) =>
-    request<{ success: boolean; userId: string; isOnboarded: boolean }>("/auth/sync", {
+    request<{ success: boolean; userId: string; isOnboarded: boolean; patientProfile?: any }>("/auth/sync", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -538,6 +539,10 @@ export const auth = {
     request<{ success: boolean; patientProfile: any }>("/auth/onboard", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  getProfile: () =>
+    request<{ success: boolean; user: any; patientProfile: any }>("/auth/profile", {
+      method: "GET",
     }),
 };
 

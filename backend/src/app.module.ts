@@ -55,7 +55,7 @@ import { VoiceModule } from './modules/voice/voice.module';
         const redisUrl = config.get<string>('REDIS_URL');
         if (redisUrl) {
           return {
-            connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) as any
+            connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) as unknown as Record<string, unknown>
           };
         }
         return {

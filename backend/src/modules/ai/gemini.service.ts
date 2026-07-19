@@ -144,11 +144,25 @@ export class GeminiService {
   }
 
   async summarizePatientHistory(extractions: Record<string, unknown>[], type: 'PATIENT' | 'DOCTOR', clerkId?: string) {
+    if (extractions.length === 0) {
+      return {
+        currentConditions: [],
+        currentMedicines: [],
+        allergies: [],
+        recentLabs: [],
+        recentImaging: [],
+        pastSurgeries: [],
+        vitalSigns: [],
+        immunizations: [],
+        summary: "No medical documents provided yet. Please upload clinical documents or prescriptions to generate insights."
+      };
+    }
+
     const normalizeSummary = (parsed: Record<string, unknown>) => {
       const currentConditions = parsed?.currentConditions;
       const conditions = Array.isArray(currentConditions) && currentConditions.length > 0
         ? currentConditions.map((c: Record<string, unknown> | string) => typeof c === 'string' ? c : String(c.name || c.condition || 'General Condition'))
-        : ['General Health Maintenance (No active chronic diagnoses reported)'];
+        : [];
 
       const currentMedicines = parsed?.currentMedicines;
       const medicines = Array.isArray(currentMedicines) && currentMedicines.length > 0
@@ -248,6 +262,15 @@ export class GeminiService {
     periodLabel: string,
     _clerkId?: string,
   ) {
+    if (events.length === 0) {
+      return {
+        summary: `No medical documents or timeline events recorded yet. Upload your first medical report, prescription, or lab test to start tracking and generate your AI health summary.`,
+        keyEvents: [],
+        trends: [],
+        recommendations: [],
+      };
+    }
+
     if (!this.genAI) {
       return this.fallbackTimelineSummary(events, periodLabel);
     }

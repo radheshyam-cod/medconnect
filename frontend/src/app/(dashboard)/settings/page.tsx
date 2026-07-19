@@ -48,6 +48,16 @@ export default function SettingsPage() {
   });
   const [isLoaded, setIsLoaded] = useState(false);
   const [show2FADialog, setShow2FADialog] = useState(false);
+  const [patientProfile, setPatientProfile] = useState<any>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    dateOfBirth: "",
+    gender: "",
+    bloodGroup: "",
+    allergies: "",
+    emergencyContact: "",
+  });
   
   // 2FA Modal states
   const [authMethodTab, setAuthMethodTab] = useState<"passkey" | "sms" | "email" | "authenticator">("passkey");
@@ -69,6 +79,39 @@ export default function SettingsPage() {
       }
     }
     setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.auth.getProfile();
+        if (res?.patientProfile) {
+          setPatientProfile(res.patientProfile);
+          setProfileForm({
+            dateOfBirth: res.patientProfile.dateOfBirth ? new Date(res.patientProfile.dateOfBirth).toISOString().split('T')[0] : "",
+            gender: res.patientProfile.gender || "",
+            bloodGroup: res.patientProfile.bloodGroup || "",
+            allergies: Array.isArray(res.patientProfile.allergies) ? res.patientProfile.allergies.join(", ") : "",
+            emergencyContact: res.patientProfile.emergencyContact || "",
+          });
+        } else {
+          const stats = await api.dashboard.getStats();
+          if (stats?.patientProfile) {
+            setPatientProfile(stats.patientProfile);
+            setProfileForm({
+              dateOfBirth: stats.patientProfile.dateOfBirth ? new Date(stats.patientProfile.dateOfBirth).toISOString().split('T')[0] : "",
+              gender: stats.patientProfile.gender || "",
+              bloodGroup: stats.patientProfile.bloodGroup || "",
+              allergies: Array.isArray(stats.patientProfile.allergies) ? stats.patientProfile.allergies.join(", ") : "",
+              emergencyContact: stats.patientProfile.emergencyContact || "",
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching profile:", e);
+      }
+    };
+    fetchProfile();
   }, []);
 
   useEffect(() => {
@@ -111,6 +154,52 @@ export default function SettingsPage() {
 
   const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "User";
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "Not provided";
+
+  const calculateAge = (dob: string | Date | null | undefined) => {
+    if (!dob) return null;
+    const diff = Date.now() - new Date(dob).getTime();
+    const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    return isNaN(age) || age < 0 ? null : age;
+  };
+  const ageVal = calculateAge(patientProfile?.dateOfBirth);
+  const ageDisplay = ageVal !== null ? `${ageVal} years old` : "Not set";
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      const allergiesArray = profileForm.allergies
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      const res = await api.auth.onboard({
+        dateOfBirth: profileForm.dateOfBirth || undefined,
+        gender: profileForm.gender || undefined,
+        bloodGroup: profileForm.bloodGroup || undefined,
+        allergies: allergiesArray,
+        emergencyContact: profileForm.emergencyContact || undefined,
+      });
+
+      if (res?.success) {
+        toast.success("Medical Profile updated successfully!");
+        setPatientProfile(res.patientProfile || {
+          ...patientProfile,
+          dateOfBirth: profileForm.dateOfBirth,
+          gender: profileForm.gender,
+          bloodGroup: profileForm.bloodGroup,
+          allergies: allergiesArray,
+          emergencyContact: profileForm.emergencyContact,
+        });
+        setIsEditingProfile(false);
+      } else {
+        toast.error("Failed to update medical profile.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const handleExportFHIR = async () => {
     try {
@@ -194,12 +283,30 @@ export default function SettingsPage() {
   }> = [
     {
       icon: User,
-      title: "Account",
-      description: "Manage your personal information and profile settings",
+      title: "Account & Medical Profile",
+      description: "Manage your personal information, age, gender, blood group, allergies, and emergency contact",
       items: [
         { label: "Full Name", type: "text", value: fullName },
         { label: "Email", type: "text", value: email },
+        { label: "Age", type: "text", value: ageDisplay },
+        { label: "Gender", type: "text", value: patientProfile?.gender || "Not set" },
+        { label: "Blood Group", type: "text", value: patientProfile?.bloodGroup || "Not set" },
+        { label: "Allergies", type: "text", value: Array.isArray(patientProfile?.allergies) && patientProfile.allergies.length > 0 ? patientProfile.allergies.join(", ") : "None reported" },
+        { label: "Emergency Contact", type: "text", value: patientProfile?.emergencyContact || "Not set" },
       ],
+      action: (
+        <div className="pt-3 border-t border-border/40 mt-3 flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsEditingProfile(true)}
+            className="h-8 text-xs px-3 font-medium border-primary/30 hover:border-primary hover:bg-primary/5 text-primary transition-all shadow-sm"
+          >
+            <User className="h-3.5 w-3.5 mr-1.5" />
+            Edit Medical Profile
+          </Button>
+        </div>
+      ),
       color: "text-blue-500",
       bg: "bg-blue-100 dark:bg-blue-950/50",
     },
@@ -757,6 +864,114 @@ export default function SettingsPage() {
                   }}
                 >
                   Close
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Medical Profile Modal Overlay */}
+      <AnimatePresence>
+        {isEditingProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-lg rounded-xl bg-background border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="bg-gradient-to-r from-blue-500/10 via-primary/5 to-transparent p-6 border-b border-border/60 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">Edit Medical Profile</h3>
+                    <p className="text-xs text-muted-foreground">Update your age/DOB, gender, blood group, allergies, and emergency contact</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 text-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Date of Birth (calculates Age)</label>
+                    <input
+                      type="date"
+                      value={profileForm.dateOfBirth}
+                      onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Gender</label>
+                    <select
+                      value={profileForm.gender}
+                      onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Blood Group</label>
+                  <select
+                    value={profileForm.bloodGroup}
+                    onChange={(e) => setProfileForm({ ...profileForm, bloodGroup: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Blood Group</option>
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Allergies (comma-separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Penicillin, Peanuts, Dust"
+                    value={profileForm.allergies}
+                    onChange={(e) => setProfileForm({ ...profileForm, allergies: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">List any known allergies or adverse reactions.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Emergency Contact</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. +91 98765 43210 (Spouse)"
+                    value={profileForm.emergencyContact}
+                    onChange={(e) => setProfileForm({ ...profileForm, emergencyContact: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Contact person and phone number for emergencies.</p>
+                </div>
+              </div>
+
+              <div className="bg-muted/40 px-6 py-3 border-t border-border/60 flex justify-end gap-3 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </Button>
               </div>
             </motion.div>

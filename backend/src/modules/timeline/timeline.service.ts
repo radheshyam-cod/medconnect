@@ -201,6 +201,18 @@ export class TimelineService {
       orderBy: { eventDate: "desc" },
     });
 
+    if (events.length === 0) {
+      return new AITimelineSummaryDto({
+        summary: 'No medical documents or timeline events recorded yet. Upload your first medical report, prescription, or lab test to start tracking and generate your AI health summary.',
+        keyEvents: [],
+        trends: [],
+        recommendations: [],
+        totalEventsInPeriod: 0,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+      });
+    }
+
     const periodLabel = `${periodStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${periodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
     // Generate AI summary (with fallback)

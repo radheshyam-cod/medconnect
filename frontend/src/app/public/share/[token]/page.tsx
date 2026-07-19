@@ -76,7 +76,7 @@ export default function PublicSharePage() {
   const rawConditions = doctorSummary?.currentConditions || [];
   const activeConditions = Array.isArray(rawConditions) && rawConditions.length > 0
     ? rawConditions.map((c: any) => typeof c === 'string' ? c : (c.name || c.condition || 'General Condition'))
-    : ['General Health Maintenance (No active chronic diagnoses reported)'];
+    : [];
   const allergies = patientProfile?.allergies?.length > 0 ? patientProfile.allergies : doctorSummary?.allergies || [];
 
   const displayMedications = (medications?.length > 0
@@ -162,12 +162,14 @@ export default function PublicSharePage() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Key Highlights</h4>
                   <ul className="space-y-2 text-sm">
-                    {activeConditions.slice(0, 3).map((cond: string, i: number) => (
+                    {activeConditions.length > 0 ? activeConditions.slice(0, 3).map((cond: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-slate-700">
                         <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                         <span>{cond}</span>
                       </li>
-                    ))}
+                    )) : (
+                      <li className="text-slate-500 italic">No active chronic diagnoses reported.</li>
+                    )}
                   </ul>
                 </div>
                 <div>
@@ -231,12 +233,14 @@ export default function PublicSharePage() {
               )}
               <div className="space-y-2">
                 <h5 className="font-semibold text-indigo-900 text-xs uppercase tracking-wider">Active Clinical Diagnoses</h5>
-                {activeConditions.map((cond: string, i: number) => (
+                {activeConditions.length > 0 ? activeConditions.map((cond: string, i: number) => (
                   <div key={i} className="flex items-start gap-2">
                     <Check className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
                     <span className="font-medium">{cond}</span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-indigo-700/80 italic">No active clinical diagnoses reported.</p>
+                )}
               </div>
               <div className="space-y-2 pt-2 border-t border-indigo-100/60">
                 <h5 className="font-semibold text-indigo-900 text-xs uppercase tracking-wider">Medications & Indications</h5>
@@ -299,12 +303,14 @@ export default function PublicSharePage() {
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y text-sm">
-                {activeConditions.map((cond: string, i: number) => (
+                {activeConditions.length > 0 ? activeConditions.map((cond: string, i: number) => (
                   <li key={i} className="p-4 flex items-center gap-3 bg-slate-50/50">
                     <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                     <span className="font-medium text-slate-800">{cond}</span>
                   </li>
-                ))}
+                )) : (
+                  <li className="p-4 text-slate-500 italic bg-slate-50/50">No active chronic diagnoses reported.</li>
+                )}
               </ul>
             </CardContent>
           </Card>

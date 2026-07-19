@@ -226,12 +226,14 @@ export default function TimelinePage() {
               <div className="flex items-center gap-2 mb-3 text-primary">
                 <Sparkles className="h-4 w-4" /> <span className="text-xs font-bold text-muted-foreground">Total Events</span>
               </div>
-              <h3 className="text-3xl font-extrabold leading-none mb-1">83</h3>
-              <p className="text-[10px] font-bold text-emerald-500">+12 this year</p>
+              <h3 className="text-3xl font-extrabold leading-none mb-1">{summary?.totalEvents ?? events.length}</h3>
+              <p className="text-[10px] font-bold text-emerald-500">{events.length > 0 ? `+${summary?.byMonth ? Object.values(summary.byMonth)[0] || 0 : events.length} recent` : "0 recorded"}</p>
             </div>
-            <div className="absolute bottom-0 left-0 right-0">
-               <Sparkline color="#8b5cf6" data={[10, 15, 8, 25, 20, 35, 45]} />
-            </div>
+            {events.length > 0 && (
+              <div className="absolute bottom-0 left-0 right-0">
+                 <Sparkline color="#8b5cf6" data={[10, 15, 8, 25, 20, 35, events.length || 45]} />
+              </div>
+            )}
           </div>
           
           <div className="surface-card rounded-2xl border border-border/50 p-4 pt-5 flex flex-col justify-between overflow-hidden relative">
@@ -239,12 +241,14 @@ export default function TimelinePage() {
               <div className="flex items-center gap-2 mb-3 text-blue-500">
                 <FlaskConical className="h-4 w-4" /> <span className="text-xs font-bold text-muted-foreground">Lab Tests</span>
               </div>
-              <h3 className="text-3xl font-extrabold leading-none mb-1">32</h3>
-              <p className="text-[10px] font-bold text-emerald-500">+6 this year</p>
+              <h3 className="text-3xl font-extrabold leading-none mb-1">{summary?.byType?.LAB_TEST ?? events.filter(e => e.eventType === "LAB_TEST").length}</h3>
+              <p className="text-[10px] font-bold text-emerald-500">{(summary?.byType?.LAB_TEST ?? events.filter(e => e.eventType === "LAB_TEST").length) > 0 ? "Recorded" : "0 recorded"}</p>
             </div>
-            <div className="absolute bottom-0 left-0 right-0">
-               <Sparkline color="#3b82f6" data={[2, 5, 4, 8, 5, 9, 12]} />
-            </div>
+            {(summary?.byType?.LAB_TEST ?? events.filter(e => e.eventType === "LAB_TEST").length) > 0 && (
+              <div className="absolute bottom-0 left-0 right-0">
+                 <Sparkline color="#3b82f6" data={[2, 5, 4, 8, 5, 9, summary?.byType?.LAB_TEST || 12]} />
+              </div>
+            )}
           </div>
 
           <div className="surface-card rounded-2xl border border-border/50 p-4 pt-5 flex flex-col justify-between overflow-hidden relative">
@@ -252,12 +256,14 @@ export default function TimelinePage() {
               <div className="flex items-center gap-2 mb-3 text-emerald-500">
                 <Pill className="h-4 w-4" /> <span className="text-xs font-bold text-muted-foreground">Medications</span>
               </div>
-              <h3 className="text-3xl font-extrabold leading-none mb-1">18</h3>
-              <p className="text-[10px] font-bold text-emerald-500">Ongoing</p>
+              <h3 className="text-3xl font-extrabold leading-none mb-1">{summary?.byType?.MEDICATION ?? events.filter(e => e.eventType === "MEDICATION").length}</h3>
+              <p className="text-[10px] font-bold text-emerald-500">{(summary?.byType?.MEDICATION ?? events.filter(e => e.eventType === "MEDICATION").length) > 0 ? "Ongoing" : "0 ongoing"}</p>
             </div>
-            <div className="absolute bottom-0 left-0 right-0">
-               <Sparkline color="#10b981" data={[15, 15, 18, 18, 18, 18]} />
-            </div>
+            {(summary?.byType?.MEDICATION ?? events.filter(e => e.eventType === "MEDICATION").length) > 0 && (
+              <div className="absolute bottom-0 left-0 right-0">
+                 <Sparkline color="#10b981" data={[15, 15, 18, 18, 18, summary?.byType?.MEDICATION || 18]} />
+              </div>
+            )}
           </div>
 
           <div className="surface-card rounded-2xl border border-border/50 p-4 pt-5 flex flex-col justify-between overflow-hidden relative">
@@ -265,8 +271,8 @@ export default function TimelinePage() {
               <div className="flex items-center gap-2 mb-3 text-orange-500">
                 <Microscope className="h-4 w-4" /> <span className="text-xs font-bold text-muted-foreground">Procedures</span>
               </div>
-              <h3 className="text-3xl font-extrabold leading-none mb-1">7</h3>
-              <p className="text-[10px] font-bold text-muted-foreground">Lifetime</p>
+              <h3 className="text-3xl font-extrabold leading-none mb-1">{summary?.byType?.PROCEDURE ?? events.filter(e => e.eventType === "PROCEDURE").length}</h3>
+              <p className="text-[10px] font-bold text-muted-foreground">{(summary?.byType?.PROCEDURE ?? events.filter(e => e.eventType === "PROCEDURE").length) > 0 ? "Lifetime" : "0 recorded"}</p>
             </div>
           </div>
         </div>
@@ -323,7 +329,7 @@ export default function TimelinePage() {
               <span className="flex gap-1 items-center text-primary/60 animate-pulse">
                 <Sparkles className="h-3 w-3" /> Analyzing your timeline...
               </span>
-            ) : aiSummary?.summary || "Your health journey is stable. Keep following your medication and lifestyle routine."}
+            ) : events.length === 0 ? "No medical documents or timeline events recorded yet. Upload prescriptions or lab reports to build your timeline." : (aiSummary?.summary || "Your health journey is stable. Keep following your medication and lifestyle routine.")}
           </p>
           <Button 
             variant="outline" 
@@ -407,45 +413,45 @@ export default function TimelinePage() {
                 <div className="p-1 rounded-md bg-emerald-500/10 text-emerald-500"><FlaskConical className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Lab Tests</span>
               </div>
-              <span className="font-bold tabular-nums">32</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.LAB_TEST ?? events.filter(e => e.eventType === "LAB_TEST").length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <div className="p-1 rounded-md bg-blue-500/10 text-blue-500"><Hospital className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Visits</span>
               </div>
-              <span className="font-bold tabular-nums">18</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.VISIT ?? events.filter(e => e.eventType === "VISIT").length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <div className="p-1 rounded-md bg-purple-500/10 text-purple-500"><Pill className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Medications</span>
               </div>
-              <span className="font-bold tabular-nums">18</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.MEDICATION ?? events.filter(e => e.eventType === "MEDICATION").length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <div className="p-1 rounded-md bg-orange-500/10 text-orange-500"><Microscope className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Procedures</span>
               </div>
-              <span className="font-bold tabular-nums">7</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.PROCEDURE ?? events.filter(e => e.eventType === "PROCEDURE").length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <div className="p-1 rounded-md bg-rose-500/10 text-rose-500"><Hospital className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Hospitalizations</span>
               </div>
-              <span className="font-bold tabular-nums">3</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.HOSPITALIZATION ?? events.filter(e => e.eventType === "HOSPITALIZATION").length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <div className="p-1 rounded-md bg-green-500/10 text-green-500"><Syringe className="h-3.5 w-3.5" /></div>
                 <span className="font-medium">Vaccinations</span>
               </div>
-              <span className="font-bold tabular-nums">5</span>
+              <span className="font-bold tabular-nums">{summary?.byType?.VACCINATION ?? events.filter(e => e.eventType === "VACCINATION").length}</span>
             </div>
           </div>
-          <button className="text-xs font-bold text-primary mt-5 hover:underline">Show all</button>
+          {events.length > 0 && <button className="text-xs font-bold text-primary mt-5 hover:underline">Show all</button>}
         </div>
 
       </div>
