@@ -356,7 +356,7 @@ export default function DocumentsPage() {
             </div>
             <h3 className="text-lg font-bold">No Documents Found</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-              You haven't uploaded any medical documents yet. Drag and drop your first file in the box above!
+              You haven&apos;t uploaded any medical documents yet. Drag and drop your first file in the box above!
             </p>
           </CardContent>
         </Card>
