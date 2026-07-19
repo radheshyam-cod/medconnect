@@ -257,7 +257,7 @@ export default function PublicSharePage() {
                             Currently taking <span className="font-medium">{med.name}</span>
                             {isMissing ? (
                               <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded ml-1.5 text-xs border border-amber-200 font-medium">
-                                ⚠️ Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")
+                                ⚠️ Missing exact dosage (Please update intake & timing, e.g. &ldquo;1 tablet after meals&rdquo;)
                               </span>
                             ) : (
                               ` (${med.dosage} • ${med.frequency})`
@@ -343,7 +343,7 @@ export default function PublicSharePage() {
                               {isMissing ? (
                                 <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs border border-amber-200 font-medium">
                                   <AlertTriangle className="h-3 w-3 shrink-0" />
-                                  Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")
+                                  Missing exact dosage (Please update intake & timing, e.g. &ldquo;1 tablet after meals&rdquo;)
                                 </span>
                               ) : (
                                 med.dosage

@@ -73,7 +73,7 @@ export function LabBiomarkerUploader({ onUpload, isUploading, onCancel }: LabUpl
 
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
-  }, []);
+  }, [handleFile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
