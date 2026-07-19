@@ -88,8 +88,8 @@ export function DashboardClient() {
   const healthScore = (stats as any)?.healthScore ?? 0;
   const healthTrend = healthScore >= 80 ? "up" as const : healthScore >= 60 ? "stable" as const : "down" as const;
 
-  const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-  const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } };
+  const container: any = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+  const item: any = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } };
 
   // AI Insights logic
   const recs = aiSummary?.recommendations || [];

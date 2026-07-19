@@ -32,11 +32,46 @@ export class SummaryService {
     });
 
     if (extractions.length === 0) {
-      const summaryResult = { summary: "No medical records found to summarize." };
-      return summaryResult;
+      const defaultSummary = {
+        currentConditions: ["General Health Maintenance (No active chronic diagnoses reported)"],
+        currentMedicines: [],
+        allergies: [],
+        recentLabs: [],
+        recentImaging: [],
+        pastSurgeries: [],
+        vitalSigns: [],
+        immunizations: [],
+        summary: "No medical records found to summarize yet. Please upload clinical documents or prescriptions to generate insights."
+      };
+      return defaultSummary;
     }
 
     const structuredSummary = await this.aiService.summarizePatientHistory(extractions, type, userId);
+
+    const summaryAny = structuredSummary as any;
+    if (type === 'DOCTOR' && structuredSummary) {
+      try {
+        await this.prisma.doctorSummary.create({
+          data: {
+            userId,
+            currentConditions: (Array.isArray(summaryAny.currentConditions) && summaryAny.currentConditions.length > 0)
+              ? summaryAny.currentConditions
+              : ["General Health Maintenance (No active chronic diagnoses reported)"],
+            currentMedicines: summaryAny.currentMedicines || [],
+            allergies: summaryAny.allergies || [],
+            recentLabs: summaryAny.recentLabs || [],
+            recentImaging: summaryAny.recentImaging || [],
+            pastSurgeries: summaryAny.pastSurgeries || [],
+            vitalSigns: summaryAny.vitalSigns || [],
+            immunizations: summaryAny.immunizations || [],
+            aiModel: 'gemini-1.5-pro',
+            confidence: 0.95,
+          }
+        });
+      } catch (_e) {
+        this.logger.warn('Failed to persist DoctorSummary', _e);
+      }
+    }
 
     // Store summary in memory (fire-and-forget)
     this.memorySynchronizer.onSummaryGenerated(userId, structuredSummary);

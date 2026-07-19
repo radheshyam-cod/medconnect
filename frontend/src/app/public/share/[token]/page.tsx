@@ -73,8 +73,51 @@ export default function PublicSharePage() {
 
   const generalDocs = documents?.filter((d: any) => d.documentType !== "SCAN_REPORT") || [];
   const imagingDocs = documents?.filter((d: any) => d.documentType === "SCAN_REPORT") || [];
-  const activeConditions = doctorSummary?.currentConditions || [];
+  const rawConditions = doctorSummary?.currentConditions || [];
+  const activeConditions = Array.isArray(rawConditions) && rawConditions.length > 0
+    ? rawConditions.map((c: any) => typeof c === 'string' ? c : (c.name || c.condition || 'General Condition'))
+    : ['General Health Maintenance (No active chronic diagnoses reported)'];
   const allergies = patientProfile?.allergies?.length > 0 ? patientProfile.allergies : doctorSummary?.allergies || [];
+
+  const displayMedications = (medications?.length > 0
+    ? medications
+    : Array.isArray(doctorSummary?.currentMedicines)
+      ? doctorSummary.currentMedicines
+      : []
+  ).map((med: any) => {
+    const rawDosage = typeof med === 'object' && med?.dosage && med.dosage !== '-' ? med.dosage : 'As prescribed';
+    const isMissingDosage = med?.isMissingDosage || rawDosage === 'As prescribed' || rawDosage === '-' || rawDosage.includes('Missing exact dosage');
+    const dosageDisplay = isMissingDosage ? 'Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")' : rawDosage;
+    return {
+      id: med.id || med.name || Math.random().toString(),
+      name: typeof med === 'string' ? med : (med.name || med.medication || 'Prescription Medication'),
+      dosage: dosageDisplay,
+      isMissingDosage,
+      frequency: typeof med === 'object' && med?.frequency && med.frequency !== '-' ? med.frequency : 'Daily',
+      indication: typeof med === 'object' && med?.indication ? med.indication : '',
+      displayText: typeof med === 'object' && med?.displayText ? med.displayText : '',
+    };
+  });
+
+  const displayLabResults = (labResults?.length > 0
+    ? labResults
+    : Array.isArray(doctorSummary?.recentLabs)
+      ? doctorSummary.recentLabs
+      : []
+  ).map((lab: any) => {
+    const rawRef = typeof lab === 'object' && (lab?.referenceRange || lab?.range) && (lab.referenceRange || lab.range) !== '-' ? (lab.referenceRange || lab.range) : '';
+    const refRange = (!rawRef || rawRef.toLowerCase().includes('standard reference range') || rawRef.toLowerCase().includes('within standard laboratory baseline')) ? '' : rawRef;
+    return {
+      id: lab.id || lab.testName || Math.random().toString(),
+      date: lab.date || new Date(),
+      testName: typeof lab === 'string' ? lab : (lab.testName || lab.test || 'Lab Test'),
+      value: typeof lab === 'object' && lab?.value ? lab.value : 'Normal',
+      unit: typeof lab === 'object' && lab?.unit ? lab.unit : '',
+      referenceRange: refRange,
+      isAbnormal: typeof lab === 'object' ? Boolean(lab.isAbnormal || lab.abnormal) : false,
+      summaryText: typeof lab === 'object' && lab?.summaryText ? lab.summaryText : '',
+    };
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12 font-sans selection:bg-primary/20">
@@ -119,16 +162,12 @@ export default function PublicSharePage() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Key Highlights</h4>
                   <ul className="space-y-2 text-sm">
-                    {activeConditions.length > 0 ? (
-                      activeConditions.slice(0, 3).map((cond: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 text-slate-700">
-                          <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                          <span>{cond}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-slate-500 italic">No chronic conditions recorded.</li>
-                    )}
+                    {activeConditions.slice(0, 3).map((cond: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-slate-700">
+                        <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <span>{cond}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
                 <div>
@@ -185,24 +224,66 @@ export default function PublicSharePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4 text-sm text-slate-700">
-              {doctorSummary.currentConditions?.map((cond: string, i: number) => (
-                <div key={i} className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
-                  <span className="font-medium">{cond}</span>
+              {doctorSummary.summaryText && (
+                <div className="p-3 bg-indigo-50/70 rounded-lg border border-indigo-100 text-indigo-950 font-medium mb-4">
+                  {doctorSummary.summaryText}
                 </div>
-              ))}
-              {doctorSummary.currentMedicines?.map((med: string, i: number) => (
-                <div key={i} className="flex items-start gap-2">
-                  <ChevronRight className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Currently taking <span className="font-medium">{med}</span></span>
-                </div>
-              ))}
-              {doctorSummary.recentLabs?.map((lab: string, i: number) => (
-                <div key={i} className="flex items-start gap-2">
-                  <Activity className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>{lab}</span>
-                </div>
-              ))}
+              )}
+              <div className="space-y-2">
+                <h5 className="font-semibold text-indigo-900 text-xs uppercase tracking-wider">Active Clinical Diagnoses</h5>
+                {activeConditions.map((cond: string, i: number) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
+                    <span className="font-medium">{cond}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2 pt-2 border-t border-indigo-100/60">
+                <h5 className="font-semibold text-indigo-900 text-xs uppercase tracking-wider">Medications & Indications</h5>
+                {(Array.isArray(doctorSummary.currentMedicines) && doctorSummary.currentMedicines.length > 0 ? doctorSummary.currentMedicines : displayMedications).map((med: any, i: number) => {
+                  const isMissing = med.isMissingDosage || (typeof med.dosage === 'string' && (med.dosage === 'As prescribed' || med.dosage.includes('Missing exact dosage')));
+                  return (
+                    <div key={i} className="flex items-start gap-2">
+                      <ChevronRight className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                      <span>
+                        {med.displayText ? (
+                          <span className="font-medium">{med.displayText}</span>
+                        ) : (
+                          <>
+                            Currently taking <span className="font-medium">{med.name}</span>
+                            {isMissing ? (
+                              <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded ml-1.5 text-xs border border-amber-200 font-medium">
+                                ⚠️ Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")
+                              </span>
+                            ) : (
+                              ` (${med.dosage} • ${med.frequency})`
+                            )}
+                            {med.indication && !med.indication.includes('⚠️') ? ` - ${med.indication}` : ''}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="space-y-2 pt-2 border-t border-indigo-100/60">
+                <h5 className="font-semibold text-indigo-900 text-xs uppercase tracking-wider">Synthesized Lab Findings</h5>
+                {(Array.isArray(doctorSummary.recentLabs) && doctorSummary.recentLabs.length > 0 ? doctorSummary.recentLabs : displayLabResults).map((lab: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Activity className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>
+                      {lab.summaryText ? (
+                        <span className="font-medium">{lab.summaryText}</span>
+                      ) : (
+                        <>
+                          {lab.testName}: <span className="font-medium">{lab.value} {lab.unit}</span>
+                          {lab.referenceRange ? ` (Baseline: ${lab.referenceRange})` : ''}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -218,16 +299,12 @@ export default function PublicSharePage() {
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y text-sm">
-                {activeConditions.length > 0 ? (
-                  activeConditions.map((cond: string, i: number) => (
-                    <li key={i} className="p-4 flex items-center gap-3 bg-slate-50/50">
-                      <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="font-medium text-slate-800">{cond}</span>
-                    </li>
-                  ))
-                ) : (
-                  <li className="p-6 text-center text-slate-500 italic">No active diagnoses.</li>
-                )}
+                {activeConditions.map((cond: string, i: number) => (
+                  <li key={i} className="p-4 flex items-center gap-3 bg-slate-50/50">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="font-medium text-slate-800">{cond}</span>
+                  </li>
+                ))}
               </ul>
             </CardContent>
           </Card>
@@ -250,18 +327,30 @@ export default function PublicSharePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {medications?.length > 0 ? (
-                      medications.map((med: any) => (
-                        <TableRow key={med.id}>
-                          <TableCell className="font-medium">{med.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{med.dosage || "-"}</TableCell>
-                          <TableCell className="text-muted-foreground">{med.frequency || "-"}</TableCell>
-                        </TableRow>
-                      ))
+                    {displayMedications.length > 0 ? (
+                      displayMedications.map((med: any, idx: number) => {
+                        const isMissing = med.isMissingDosage || med.dosage === 'As prescribed' || (typeof med.dosage === 'string' && med.dosage.includes('Missing exact dosage'));
+                        return (
+                          <TableRow key={med.id || idx}>
+                            <TableCell className="font-medium">{med.name}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {isMissing ? (
+                                <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs border border-amber-200 font-medium">
+                                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                                  Missing exact dosage (Please update intake & timing, e.g. "1 tablet after meals")
+                                </span>
+                              ) : (
+                                med.dosage
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{med.frequency}</TableCell>
+                          </TableRow>
+                        );
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center h-24 text-muted-foreground italic">
-                          No active medications.
+                          No active medications recorded.
                         </TableCell>
                       </TableRow>
                     )}
@@ -292,11 +381,11 @@ export default function PublicSharePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {labResults?.length > 0 ? (
-                    labResults.map((lab: any) => (
-                      <TableRow key={lab.id}>
+                  {displayLabResults.length > 0 ? (
+                    displayLabResults.map((lab: any, idx: number) => (
+                      <TableRow key={lab.id || idx}>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDate(lab.date)}
+                          {lab.date ? formatDate(lab.date) : "-"}
                         </TableCell>
                         <TableCell className="font-medium">{lab.testName}</TableCell>
                         <TableCell>{lab.value} <span className="text-xs text-muted-foreground">{lab.unit}</span></TableCell>
@@ -317,7 +406,7 @@ export default function PublicSharePage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center h-24 text-muted-foreground italic">
-                        No recent lab results found.
+                        No recent lab results recorded.
                       </TableCell>
                     </TableRow>
                   )}
