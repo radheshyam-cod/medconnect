@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface DocumentCardProps {
   document: {
@@ -23,6 +24,8 @@ interface DocumentCardProps {
   viewMode?: "grid" | "list";
   onDelete?: (id: string) => void;
   onDownload?: (id: string) => void;
+  onSelect?: (id: string, selected: boolean) => void;
+  isSelected?: boolean;
   isLoading?: boolean;
   className?: string;
 }
@@ -53,9 +56,12 @@ export function DocumentCard({
   viewMode = "grid",
   onDelete,
   onDownload,
+  onSelect,
+  isSelected,
   isLoading,
   className,
 }: DocumentCardProps) {
+  const router = useRouter();
   const [showActions, setShowActions] = useState(false);
   const status = statusConfig[document.status] || statusConfig.PENDING;
   const StatusIcon = status.icon;
@@ -240,14 +246,80 @@ export function DocumentCard({
               
               {/* Top Image Preview Area */}
               <div className="h-[140px] w-full bg-gradient-to-br from-muted/50 to-muted/80 relative flex items-center justify-center overflow-hidden border-b border-border/40 shrink-0 group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
-                {/* Mockup Checkbox Top Left */}
-                <div className="absolute top-3 left-3 w-4 h-4 rounded border border-foreground/20 bg-background shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
-                  {/* Empty checkbox */}
-                </div>
-                
-                {/* Mockup ... Menu Top Right */}
-                <div className="absolute top-3 right-3 w-6 h-6 rounded-md bg-background/50 backdrop-blur-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background transition-colors shadow-sm" onClick={(e) => e.preventDefault()}>
-                  <MoreHorizontal className="h-4 w-4" />
+                {/* Workable ... Menu Top Right */}
+                <div className="absolute top-3 right-3 z-20">
+                  <div
+                    className="w-7 h-7 rounded-md bg-background/80 hover:bg-background backdrop-blur-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-all shadow-sm border border-border/40 cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowActions(!showActions);
+                    }}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </div>
+
+                  {showActions && (
+                    <>
+                      {/* Invisible backdrop to catch outside clicks */}
+                      <div
+                        className="fixed inset-0 z-20"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowActions(false);
+                        }}
+                      />
+                      <div
+                        className="absolute right-0 mt-1.5 w-40 rounded-xl bg-background/95 backdrop-blur-md border border-border/80 shadow-xl p-1.5 z-30 space-y-0.5 text-xs font-medium animate-in fade-in zoom-in-95 duration-150"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        <button
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/80 text-foreground transition-colors text-left"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowActions(false);
+                            router.push(`/documents/${document.id}`);
+                          }}
+                        >
+                          <Eye className="h-3.5 w-3.5 text-primary" />
+                          View Details
+                        </button>
+                        {onDownload && (
+                          <button
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted/80 text-foreground transition-colors text-left"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowActions(false);
+                              onDownload(document.id);
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5 text-emerald-500" />
+                            Download File
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors text-left"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowActions(false);
+                              onDelete(document.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            Delete File
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <FileIcon className="h-16 w-16 text-muted-foreground/30 transition-transform duration-500 group-hover:scale-110 group-hover:text-primary/20" strokeWidth={1} />
