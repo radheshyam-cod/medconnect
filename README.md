@@ -36,7 +36,7 @@
 
 ## Overview
 
-**MedConnect India** is an open-source, AI-powered Personal Health Record (PHR) platform purpose-built for the Indian healthcare ecosystem. It allows individuals to securely aggregate, understand, and share their medical records — from prescriptions and lab reports to discharge summaries and imaging — using state-of-the-art AI and a privacy-first architecture.
+**MedConnect India** is an  AI-powered Personal Health Record (PHR) platform purpose-built for the Indian healthcare ecosystem. It allows individuals to securely aggregate, understand, and share their medical records — from prescriptions and lab reports to discharge summaries and imaging — using state-of-the-art AI and a privacy-first architecture.
 
 The platform addresses a critical gap in Indian healthcare: **fragmented, paper-based medical records**. Patients see multiple doctors, maintain physical files, and have no unified view of their health history. MedConnect solves this by automatically extracting structured medical data from uploaded documents, building a comprehensive health timeline, generating AI-powered summaries, and enabling secure sharing with family and healthcare providers.
 
