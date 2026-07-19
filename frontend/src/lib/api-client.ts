@@ -198,6 +198,26 @@ export interface SearchResult {
   metadata?: any;
 }
 
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  type: 'MEDICATION_REMINDER' | 'DOCUMENT_PROCESSED' | 'SHARE_ACCESSED' | 'APPOINTMENT_REMINDER' | 'LAB_ABNORMAL' | 'FAMILY_INVITE' | 'SYSTEM';
+  resourceType?: string;
+  resourceId?: string;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  data: NotificationItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // ─── Core Request Functions ───
 
 const DEFAULT_TIMEOUT = 30_000; // 30 seconds
@@ -614,6 +634,20 @@ export const voice = {
   },
 };
 
+export const notifications = {
+  list: (page = 1, limit = 20) =>
+    request<NotificationsResponse>('/notifications', { params: { page, limit } }),
+
+  unreadCount: () =>
+    request<{ count: number }>('/notifications/unread-count'),
+
+  markAsRead: (id: string) =>
+    request<{ success: boolean }>(`/notifications/${id}/read`, { method: 'PATCH' }),
+
+  markAllAsRead: () =>
+    request<{ success: boolean }>('/notifications/read-all', { method: 'PATCH' }),
+};
+
 export const api = {
   dashboard,
   documents,
@@ -628,6 +662,7 @@ export const api = {
   voice,
   health,
   auth,
+  notifications,
 };
 
 export default api;
