@@ -392,38 +392,40 @@ export default function LabsPage() {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-border/30">
-                          {(!hasData && !isLoading ? (
+                          {!hasData && !isLoading ? (
                             <tr><td colSpan={4} className="py-4 text-center text-xs text-muted-foreground">No test results found.</td></tr>
-                          ) : uniqueTests.slice(0, 10).map(test => {
-                             const hist = groupedLabs[test];
-                             const v1Text = hist[0]?.value + " " + (hist[0]?.unit || "");
-                             const v2Text = hist[1] ? (hist[1].value + " " + (hist[1].unit || "")) : "-";
-                             
-                             let trend = "none";
-                             let trendVal = "-";
-                             let color = "text-muted-foreground";
+                          ) : (
+                            uniqueTests.slice(0, 10).map(test => {
+                              const hist = groupedLabs[test];
+                              const v1Text = hist[0]?.value + " " + (hist[0]?.unit || "");
+                              const v2Text = hist[1] ? (hist[1].value + " " + (hist[1].unit || "")) : "-";
+                              
+                              let trend = "none";
+                              let trendVal = "-";
+                              let color = "text-muted-foreground";
 
-                             if (hist[0] && hist[1]) {
-                               const diff = (parseFloat(hist[0].value) || 0) - (parseFloat(hist[1].value) || 0);
-                               if (diff !== 0) {
-                                 trend = diff > 0 ? "up" : "down";
-                                 trendVal = Math.abs(diff).toFixed(2) + (hist[0].unit ? ` ${hist[0].unit}` : "");
-                                 color = hist[0].isAbnormal ? "text-amber-500" : "text-emerald-500";
-                               }
-                             }
-                             
-                             return { name: test, val1: v1Text, val2: v2Text, trend, trendVal, color };
-                          })).map((row: any, i: number) => (
-                             <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                <td className="py-3 text-[11px] font-bold truncate max-w-[100px]">{row.name}</td>
-                                <td className="py-3 text-[11px] font-bold">{row.val1}</td>
-                                <td className="py-3 text-[11px] font-semibold text-muted-foreground">{row.val2}</td>
-                                <td className="py-3 text-[11px] font-bold text-right flex items-center justify-end gap-1">
-                                   {row.trend === "up" ? <TrendingUp className={cn("h-3 w-3", row.color)} /> : row.trend === "down" ? <TrendingDown className={cn("h-3 w-3", row.color)} /> : null}
-                                   <span className={row.color}>{row.trendVal}</span>
-                                </td>
-                             </tr>
-                          ))}
+                              if (hist[0] && hist[1]) {
+                                const diff = (parseFloat(hist[0].value) || 0) - (parseFloat(hist[1].value) || 0);
+                                if (diff !== 0) {
+                                  trend = diff > 0 ? "up" : "down";
+                                  trendVal = Math.abs(diff).toFixed(2) + (hist[0].unit ? ` ${hist[0].unit}` : "");
+                                  color = hist[0].isAbnormal ? "text-amber-500" : "text-emerald-500";
+                                }
+                              }
+                              
+                              return { name: test, val1: v1Text, val2: v2Text, trend, trendVal, color };
+                           }).map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                 <td className="py-3 text-[11px] font-bold truncate max-w-[100px]">{row.name}</td>
+                                 <td className="py-3 text-[11px] font-bold">{row.val1}</td>
+                                 <td className="py-3 text-[11px] font-semibold text-muted-foreground">{row.val2}</td>
+                                 <td className="py-3 text-[11px] font-bold text-right flex items-center justify-end gap-1">
+                                    {row.trend === "up" ? <TrendingUp className={cn("h-3 w-3", row.color)} /> : row.trend === "down" ? <TrendingDown className={cn("h-3 w-3", row.color)} /> : null}
+                                    <span className={row.color}>{row.trendVal}</span>
+                                 </td>
+                              </tr>
+                           ))
+                          )}
                        </tbody>
                     </table>
                  </div>
