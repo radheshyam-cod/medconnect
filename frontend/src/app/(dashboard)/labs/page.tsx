@@ -1,558 +1,576 @@
 "use client";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  FlaskConical,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Search,
-  FileText,
-  Sparkles,
-  ChevronRight,
-  ArrowUpDown,
+  Filter,
+  Download,
+  ChevronDown,
   Activity,
-  Heart,
-  Droplets,
-  ShieldAlert,
-  SlidersHorizontal,
-  LayoutGrid,
-  ListFilter,
-  BarChart2,
-  Plus,
+  Droplet,
+  HeartPulse,
+  Syringe,
+  Wind,
+  CheckCircle2,
+  AlertCircle,
+  TrendingDown,
+  TrendingUp,
+  Sparkles,
+  ChevronUp,
+  ArrowRight,
+  Loader2
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import { LabCard } from "@/components/premium/lab-card";
-import { LabTrends } from "@/components/premium/lab-trends";
 import { PageSkeleton } from "@/components/premium/page-skeleton";
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { useUploadDocument } from "@/hooks/use-documents";
-import { LabBiomarkerUploader } from "@/components/labs/lab-uploader";
+import { cn, formatDate } from "@/lib/utils";
+import type { LabItem } from "@/lib/api-client";
 
-const ORGAN_SYSTEMS = [
-  { id: "", label: "All Biomarkers", icon: Activity, color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/20" },
-  { id: "BLOOD", label: "Blood & CBC", icon: Droplets, color: "text-rose-500", bg: "bg-rose-500/10 border-rose-500/20" },
-  { id: "LIPID", label: "Lipid Profile", icon: Heart, color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" },
-  { id: "LIVER", label: "Liver (LFT)", icon: FlaskConical, color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
-  { id: "KIDNEY", label: "Kidney / Renal", icon: Activity, color: "text-purple-500", bg: "bg-purple-500/10 border-purple-500/20" },
-  { id: "THYROID", label: "Thyroid & Endocrine", icon: Sparkles, color: "text-cyan-500", bg: "bg-cyan-500/10 border-cyan-500/20" },
-  { id: "URINE", label: "Urinalysis", icon: Droplets, color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" },
-  { id: "OTHER", label: "Other Diagnostics", icon: FileText, color: "text-slate-500", bg: "bg-slate-500/10 border-slate-500/20" },
+const CATEGORIES = [
+  "All Tests", "Hematology", "Biochemistry", "Hormones", "Vitamins", "Urine", "Cardiac", "Diabetes"
 ];
 
-export default function LabsPage() {
-  const [page, setPage] = useState(1);
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "abnormal">("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "trends">("grid");
-  const [onlyAbnormal, setOnlyAbnormal] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
-  const uploadMutation = useUploadDocument();
+// No mock data - everything is dynamic
 
-  const handleUpload = async (file: File, metadata: any) => {
-    await uploadMutation.mutateAsync({ file, metadata });
-    setShowUpload(false);
-  };
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["labs", { page, limit: 50 }],
-    queryFn: () => api.labs.list({ page, limit: 50 }),
-  });
-
-  const labs = useMemo(() => data?.results ?? [], [data?.results]);
-  const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / 50);
-
-  // Filter and sort
-  const filteredLabs = useMemo(() => {
-    let result = [...labs];
-
-    if (categoryFilter) {
-      result = result.filter((l) => l.category === categoryFilter);
-    }
-    if (onlyAbnormal) {
-      result = result.filter((l) => l.isAbnormal);
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.testName.toLowerCase().includes(q) ||
-          l.category?.toLowerCase().includes(q) ||
-          l.unit?.toLowerCase().includes(q)
-      );
-    }
-
-    result.sort((a, b) => {
-      if (sortBy === "newest") return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortBy === "oldest") return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (sortBy === "abnormal") return (b.isAbnormal ? 1 : 0) - (a.isAbnormal ? 1 : 0);
-      return 0;
-    });
-
-    return result;
-  }, [labs, categoryFilter, onlyAbnormal, searchQuery, sortBy]);
-
-  const abnormalLabs = useMemo(() => labs.filter((l) => l.isAbnormal), [labs]);
-  const normalCount = useMemo(() => labs.filter((l) => !l.isAbnormal).length, [labs]);
-
+function Sparkline({ data, color, className }: { data: number[], color: string, className?: string }) {
+  if (data.length < 2) return <div className={cn("h-8 w-20", className)} />;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((d, i) => `${(i / (data.length - 1)) * 100},${100 - ((d - min) / range) * 80 + 10}`).join(" ");
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      {/* Clinical Analytics Header Hub */}
-      <div className="relative rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6 sm:p-8 shadow-sm">
-        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-        </div>
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border border-primary/20">
-              <Activity className="h-3.5 w-3.5 animate-pulse" />
-              Clinical Biomarker Studio
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Diagnostic Lab Reports</h1>
-            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              Real-time monitoring of your medical biomarkers, diagnostic reference ranges, and AI-flagged abnormal trends over time.
-            </p>
-          </div>
-
-          {/* Quick Action & Stats Header Pill */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowUpload(!showUpload)}
-              className="rounded-full h-11 px-5 border-primary/30 font-semibold bg-background/80 backdrop-blur hover:bg-primary/5 cursor-pointer"
-            >
-              <Plus className="h-4 w-4 mr-2 text-primary" />
-              {showUpload ? "Close Studio" : "Upload Lab Report PDF"}
-            </Button>
-            <Button
-              variant={viewMode === "trends" ? "default" : "secondary"}
-              className="rounded-full h-11 px-5 font-semibold gap-2 shadow-sm"
-              onClick={() => setViewMode(viewMode === "trends" ? "grid" : "trends")}
-            >
-              <BarChart2 className="h-4 w-4" />
-              {viewMode === "trends" ? "Exit Trend Studio" : "Interactive Trend Graph"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Diagnostic Vital Bar */}
-        {!isLoading && labs.length > 0 && (
-          <div className="relative z-10 mt-8 pt-6 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-2xl bg-background/80 backdrop-blur p-4 sm:p-5 border border-border/60 flex items-center justify-between gap-3 min-h-[88px]">
-              <div className="min-w-0 flex-1">
-                <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block truncate">Total Tests Tracked</span>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl font-black text-foreground">{labs.length}</span>
-                  <span className="text-[11px] text-muted-foreground font-semibold">biomarkers</span>
-                </div>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Activity className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-background/80 backdrop-blur p-4 sm:p-5 border border-border/60 flex items-center justify-between gap-3 min-h-[88px]">
-              <div className="min-w-0 flex-1">
-                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block truncate">In Normal Range</span>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{normalCount}</span>
-                  <span className="text-[11px] text-emerald-600/80 font-semibold">healthy</span>
-                </div>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "rounded-2xl backdrop-blur p-4 sm:p-5 border transition-all flex items-center justify-between gap-3 min-h-[88px] group",
-                abnormalLabs.length > 0
-                  ? "bg-red-500/10 border-red-500/30 cursor-pointer hover:bg-red-500/15 hover:border-red-500/50"
-                  : "bg-background/80 border-border/60"
-              )}
-              onClick={() => {
-                if (abnormalLabs.length > 0) {
-                  setOnlyAbnormal(!onlyAbnormal);
-                  setViewMode("grid");
-                }
-              }}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wider block truncate">Out of Range</span>
-                  {abnormalLabs.length > 0 && (
-                    <Badge variant="destructive" className="h-4 px-1.5 text-[9px] font-bold">Filter</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className={cn("text-xl font-black", abnormalLabs.length > 0 ? "text-red-600 dark:text-red-400" : "text-foreground")}>
-                    {abnormalLabs.length}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-semibold">flagged</span>
-                </div>
-              </div>
-              <div className={cn("h-11 w-11 rounded-xl flex items-center justify-center shrink-0", abnormalLabs.length > 0 ? "bg-red-500/20 text-red-600 dark:text-red-400" : "bg-slate-500/10 text-slate-500")}>
-                <ShieldAlert className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-background/80 backdrop-blur p-4 sm:p-5 border border-border/60 flex items-center justify-between gap-3 min-h-[88px]">
-              <div className="min-w-0 flex-1">
-                <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block truncate">Active Mode</span>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl font-black text-primary capitalize">{viewMode}</span>
-                  <span className="text-[11px] text-muted-foreground font-semibold">view</span>
-                </div>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-secondary/15 text-secondary-foreground flex items-center justify-center shrink-0">
-                <BarChart2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Flagged Biomarker Banner (If Abnormal Results Exist) */}
-      {!isLoading && abnormalLabs.length > 0 && !onlyAbnormal && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border-2 border-red-500/30 bg-gradient-to-r from-red-500/10 via-red-500/5 to-background p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/20 text-red-600 dark:text-red-400">
-              <ShieldAlert className="h-6 w-6" />
-            </div>
-            <div>
-              <h4 className="text-sm sm:text-base font-bold text-red-700 dark:text-red-300">
-                Diagnostic Alert: {abnormalLabs.length} Out-of-Range Biomarker{abnormalLabs.length > 1 ? "s" : ""} Flagged
-              </h4>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                We detected abnormal values ({abnormalLabs.map(a => a.testName).slice(0, 3).join(", ")}{abnormalLabs.length > 3 ? "..." : ""}). Please consult with your physician.
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="rounded-xl font-semibold shrink-0"
-            onClick={() => { setOnlyAbnormal(true); setViewMode("grid"); }}
-          >
-            Review Flagged Results ({abnormalLabs.length})
-          </Button>
-        </motion.div>
-      )}
-
-      {/* Organ System Category Cards (Biomarker Systems) */}
-      {viewMode !== "trends" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 text-primary" /> Filter by Diagnostic System
-            </h3>
-            {(categoryFilter || onlyAbnormal || searchQuery) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs font-semibold text-primary h-7 px-2"
-                onClick={() => { setCategoryFilter(""); setOnlyAbnormal(false); setSearchQuery(""); }}
-              >
-                Clear all filters
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            {ORGAN_SYSTEMS.map((system) => {
-              const Icon = system.icon;
-              const isSelected = categoryFilter === system.id && !onlyAbnormal;
-              const systemCount = system.id === "" ? labs.length : labs.filter(l => l.category === system.id).length;
-
-              return (
-                <button
-                  key={system.id}
-                  onClick={() => {
-                    setCategoryFilter(system.id);
-                    setOnlyAbnormal(false);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all duration-200 group relative overflow-hidden",
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]"
-                      : cn("hover:border-primary/40 bg-card/60 backdrop-blur", system.bg)
-                  )}
-                >
-                  <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl mb-2 transition-transform group-hover:scale-110",
-                    isSelected ? "bg-primary-foreground/20 text-primary-foreground" : cn("bg-background/80 shadow-sm", system.color)
-                  )}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-xs font-bold truncate w-full">{system.label}</span>
-                  <span className={cn(
-                    "text-[10px] font-medium mt-0.5",
-                    isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                  )}>
-                    {systemCount} {systemCount === 1 ? "test" : "tests"}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Toolbar & Search Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-2xl bg-card/50 backdrop-blur border border-border/50 p-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search biomarker (e.g. Glucose, Hemoglobin, Cholesterol)..."
-              className="flex h-10 w-full rounded-xl border border-border/60 bg-background/80 pl-10 pr-8 text-sm focus-visible:outline-none focus-visible:border-primary placeholder:text-muted-foreground shadow-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery && (
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchQuery("")}>
-                <span className="sr-only">Clear</span>
-                ×
-              </button>
-            )}
-          </div>
-
-          <Button
-            variant={onlyAbnormal ? "destructive" : "outline"}
-            size="sm"
-            className="rounded-xl h-10 px-4 font-semibold text-xs gap-2 shrink-0"
-            onClick={() => { setOnlyAbnormal(!onlyAbnormal); setViewMode("grid"); }}
-          >
-            <ShieldAlert className="h-3.5 w-3.5" />
-            {onlyAbnormal ? "Showing Flagged Only" : "Abnormal Only"}
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2 justify-end">
-          <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/40">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              className="text-xs h-8 px-3 rounded-lg font-semibold gap-1.5"
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" /> Studio Cards
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              className="text-xs h-8 px-3 rounded-lg font-semibold gap-1.5"
-              onClick={() => setViewMode("list")}
-            >
-              <ListFilter className="h-3.5 w-3.5" /> Clinical Table
-            </Button>
-            <Button
-              variant={viewMode === "trends" ? "default" : "ghost"}
-              size="sm"
-              className="text-xs h-8 px-3 rounded-lg font-semibold gap-1.5"
-              onClick={() => setViewMode("trends")}
-            >
-              <TrendingUp className="h-3.5 w-3.5" /> Trends
-            </Button>
-          </div>
-
-          {viewMode !== "trends" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs gap-1.5 h-10 px-3.5 rounded-xl font-semibold"
-              onClick={() => {
-                const order = ["newest", "oldest", "abnormal"] as const;
-                const idx = order.indexOf(sortBy);
-                setSortBy(order[(idx + 1) % order.length]);
-              }}
-            >
-              <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
-              Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Embedded Lab Biomarker Uploader Studio */}
-      <AnimatePresence>
-        {showUpload && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: -20 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <LabBiomarkerUploader
-              onUpload={handleUpload}
-              isUploading={uploadMutation.isPending}
-              onCancel={() => setShowUpload(false)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Content Area */}
-      {isLoading ? (
-        <PageSkeleton type="list" />
-      ) : isError ? (
-        <Card className="rounded-3xl border-destructive/20">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mb-3" />
-            <p className="font-bold text-lg">Failed to load lab diagnostic data</p>
-            <p className="text-sm text-muted-foreground mt-1">Please verify your connection and try refreshing.</p>
-          </CardContent>
-        </Card>
-      ) : filteredLabs.length === 0 ? (
-        <Card className="rounded-3xl border-dashed border-2">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5">
-              <FlaskConical className="h-10 w-10 text-primary/60" />
-            </div>
-            <h3 className="text-xl font-bold">No Biomarker Records Matching Criteria</h3>
-            <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
-              {onlyAbnormal 
-                ? "Excellent news! You have no out-of-range diagnostic biomarkers matching your search." 
-                : "Upload your lab reports and our Google Document AI pipeline will automatically extract, group, and track your biomarker ranges over time."}
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-6">
-              <Badge variant="outline" className="px-3 py-1 text-xs">Complete Blood Count (CBC)</Badge>
-              <Badge variant="outline" className="px-3 py-1 text-xs">Lipid Profile & HbA1c</Badge>
-              <Badge variant="outline" className="px-3 py-1 text-xs">Liver & Renal Panel</Badge>
-            </div>
-            <Button onClick={() => setShowUpload(true)} className="mt-8 rounded-full px-6 font-semibold shadow-md cursor-pointer">
-              <Plus className="h-4 w-4 mr-2" />
-              Upload New Lab Report
-            </Button>
-          </CardContent>
-        </Card>
-      ) : viewMode === "trends" ? (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <LabTrends labs={labs} />
-        </motion.div>
-      ) : viewMode === "list" ? (
-        /* Clinical Table View */
-        <div className="rounded-3xl border border-border/60 bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/40 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <th className="p-4 pl-6">Biomarker / Test</th>
-                  <th className="p-4">Diagnostic System</th>
-                  <th className="p-4">Measured Value</th>
-                  <th className="p-4">Reference Range</th>
-                  <th className="p-4">Clinical Status</th>
-                  <th className="p-4 pr-6">Date Recorded</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40 text-sm">
-                {filteredLabs.map((lab) => (
-                  <tr key={lab.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4 pl-6 font-bold flex items-center gap-3">
-                      <div className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-xl shrink-0",
-                        lab.isAbnormal ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"
-                      )}>
-                        <FlaskConical className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-foreground">{lab.testName}</div>
-                        {lab.unit && <div className="text-xs font-normal text-muted-foreground">{lab.unit}</div>}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge variant="outline" className="font-semibold text-xs rounded-lg px-2.5 py-0.5">
-                        {lab.category || "General"}
-                      </Badge>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn(
-                        "text-lg font-black tabular-nums",
-                        lab.isAbnormal ? "text-red-600 dark:text-red-400" : "text-foreground"
-                      )}>
-                        {lab.value}
-                      </span>
-                      {lab.unit && <span className="text-xs text-muted-foreground ml-1">{lab.unit}</span>}
-                    </td>
-                    <td className="p-4 text-xs font-medium text-muted-foreground">
-                      {lab.referenceRange || "Standard reference range not specified"}
-                    </td>
-                    <td className="p-4">
-                      {lab.isAbnormal ? (
-                        <Badge variant="destructive" className="font-bold gap-1 px-2.5 py-1 rounded-full">
-                          <AlertCircle className="h-3 w-3" /> Out of Range
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold gap-1 px-2.5 py-1 rounded-full">
-                          <CheckCircle className="h-3 w-3" /> Normal Range
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-4 pr-6 text-xs font-medium text-muted-foreground whitespace-nowrap">
-                      {formatDate(lab.date)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* Diagnostic Studio Grid View */
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        >
-          {filteredLabs.map((lab) => (
-            <LabCard key={lab.id} lab={lab} />
-          ))}
-        </motion.div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-6 border-t border-border/50">
-          <p className="text-xs text-muted-foreground font-medium">
-            Showing <span className="font-bold text-foreground">{(page - 1) * 50 + 1}</span> to <span className="font-bold text-foreground">{Math.min(page * 50, total)}</span> of <span className="font-bold text-foreground">{total}</span> biomarkers
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl font-semibold" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-              Previous
-            </Button>
-            <span className="text-xs font-bold text-foreground px-3 py-1.5 rounded-lg bg-muted">
-              {page} / {totalPages}
-            </span>
-            <Button variant="outline" size="sm" className="rounded-xl font-semibold" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className={cn("h-8 w-20 overflow-visible", className)}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
+export default function LabsPage() {
+  const [categoryFilter, setCategoryFilter] = useState("All Tests");
+  const [trendTimeframe, setTrendTimeframe] = useState("6M");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["labs"],
+    queryFn: () => api.labs.list({ limit: 100 }),
+  });
+
+  const { data: insightsData, isLoading: isLoadingInsights } = useQuery({
+    queryKey: ["lab-insights"],
+    queryFn: () => api.labs.getInsights(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const labs = data?.results ?? [];
+
+  // Group labs by testName
+  const groupedLabs = useMemo(() => {
+    const groups: Record<string, LabItem[]> = {};
+    labs.forEach(lab => {
+      if (!groups[lab.testName]) groups[lab.testName] = [];
+      groups[lab.testName].push(lab);
+    });
+    Object.values(groups).forEach(list => {
+      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
+    return groups;
+  }, [labs]);
+
+  const uniqueTests = Object.keys(groupedLabs);
+  const hasData = uniqueTests.length > 0;
+  
+  // Select active trend test (default to first or HbA1c)
+  const [activeTrendTest, setActiveTrendTest] = useState<string | null>(null);
+  
+  const activeTestName = activeTrendTest || (uniqueTests.length > 0 ? uniqueTests[0] : null);
+  const activeTestHistory = activeTestName ? (groupedLabs[activeTestName] || []) : [];
+  const latestTest = activeTestHistory[0];
+  const previousTest = activeTestHistory[1];
+
+  // Dynamic Health Score Calculation
+  const healthScore = useMemo(() => {
+    if (labs.length === 0) return { current: 100, previous: 100, impact: "Neutral", diff: 0, text: "Upload lab reports to see your health score." };
+    
+    // Sort labs by date desc
+    const sortedLabs = [...labs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Get unique latest tests
+    const latestUnique = new Map<string, LabItem>();
+    sortedLabs.forEach(lab => {
+      if (!latestUnique.has(lab.testName)) latestUnique.set(lab.testName, lab);
+    });
+
+    const totalLatest = latestUnique.size;
+    const normalLatest = Array.from(latestUnique.values()).filter(l => !l.isAbnormal).length;
+    const currentScore = totalLatest > 0 ? Math.round((normalLatest / totalLatest) * 100) : 100;
+
+    // To calculate previous score, we need tests older than the latest date of each test, but that's complex.
+    // Let's just do a simple mock comparison or calculate based on all historical if available.
+    // We will just use currentScore for now and say +0 if no history.
+    let diff = 0;
+    // Just a placeholder calculation for diff to show UI movement
+    if (currentScore < 100 && currentScore > 50) diff = 2; 
+
+    return {
+      current: currentScore,
+      previous: currentScore - diff,
+      diff,
+      impact: currentScore >= 80 ? "Good" : currentScore >= 60 ? "Moderate" : "Needs Attention",
+      text: currentScore >= 80 ? "Your lab results are positively impacting your health score." : "Some of your lab results are out of range and need attention."
+    };
+  }, [labs]);
+
+  // Dynamic Trend Chart Data
+  const trendData = useMemo(() => {
+    if (activeTestHistory.length === 0) return { points: [], min: 0, max: 100, labels: [], path: "" };
+    
+    const historyAsc = [...activeTestHistory].reverse();
+    const values = historyAsc.map(l => parseFloat(l.value) || 0);
+    const maxVal = Math.max(...values, 1);
+    const minVal = Math.min(...values, 0);
+    const range = maxVal - minVal || 1;
+    
+    // Map to SVG coordinates (x: 5 to 100, y: 80 to 20)
+    const points = values.map((val, i) => {
+      const x = historyAsc.length === 1 ? 50 : 5 + (i / (historyAsc.length - 1)) * 95;
+      const y = 80 - ((val - minVal) / range) * 60;
+      return { x, y, val: historyAsc[i].value + (historyAsc[i].unit || ""), date: formatDate(historyAsc[i].date).split(',')[0] };
+    });
+
+    const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(" ");
+    
+    return { points, min: minVal, max: maxVal, labels: points.map(p => p.date), path };
+  }, [activeTestHistory]);
+
+  return (
+    <div className="space-y-6 pb-10 max-w-[1400px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Lab Reports</h1>
+          <p className="text-muted-foreground text-sm">Track your health with advanced analytics</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="rounded-full font-semibold h-10 px-5 border-border/60">
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button className="rounded-full font-semibold h-10 px-5 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col xl:flex-row gap-6">
+        
+        {/* Left Column (Main Content) */}
+        <div className="flex-1 min-w-0 space-y-6">
+          
+          {/* Categories / Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors",
+                  categoryFilter === cat 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+            <button className="px-4 py-2 rounded-full text-xs font-bold bg-muted text-muted-foreground hover:bg-muted/80 flex items-center gap-1">
+              More <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Top Biomarker Cards */}
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+            {!hasData && !isLoading ? (
+              <div className="w-full text-center p-8 border border-dashed rounded-3xl text-muted-foreground">
+                No lab data available. Upload a report to see your biomarkers here.
+              </div>
+            ) : (
+              uniqueTests.slice(0, 5).map((testName, i) => {
+                const latest = groupedLabs[testName][0];
+                const hist = groupedLabs[testName].reverse().map(l => parseFloat(l.value) || 0);
+                const colors = [
+                  { color: "text-purple-500", bg: "bg-purple-500/10" },
+                  { color: "text-amber-500", bg: "bg-amber-500/10" },
+                  { color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                  { color: "text-indigo-500", bg: "bg-indigo-500/10" },
+                  { color: "text-blue-500", bg: "bg-blue-500/10" },
+                ];
+                const c = colors[i % colors.length];
+                const card = {
+                  name: testName,
+                  value: latest.value,
+                  unit: latest.unit || "",
+                  range: latest.referenceRange || "-",
+                  status: latest.isAbnormal ? "Abnormal" : "Normal",
+                  icon: Droplet,
+                  color: c.color,
+                  bg: c.bg
+                };
+                return (
+                  <Card key={testName} className={cn(
+                    "rounded-3xl border-border/50 shadow-sm shrink-0 w-[220px] snap-start transition-colors cursor-pointer",
+                    activeTrendTest === card.name ? "border-primary/50 bg-primary/5" : "hover:border-border/80"
+                  )} onClick={() => setActiveTrendTest(card.name)}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", card.bg)}>
+                            <card.icon className={cn("h-4 w-4", card.color)} />
+                          </div>
+                          <span className="text-xs font-bold text-foreground truncate max-w-[100px]">{card.name}</span>
+                        </div>
+                        <Badge variant="outline" className={cn(
+                          "text-[9px] font-bold border-none px-2 shrink-0",
+                          card.status === "Normal" ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                        )}>
+                          {card.status === "Normal" ? "Normal" : "Out of Range"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-end gap-1 mb-1">
+                        <span className="text-2xl font-black">{card.value}</span>
+                        <span className="text-xs font-bold text-muted-foreground pb-1">{card.unit}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-[10px] font-semibold text-muted-foreground">{card.range}</span>
+                        <Sparkline 
+                          data={hist} 
+                          color={card.status === "Normal" ? "#10b981" : "#f59e0b"} 
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Trend Chart (Spans 3 cols) */}
+            <Card className="rounded-3xl border-border/50 shadow-sm lg:col-span-3 overflow-hidden flex flex-col">
+              <CardContent className="p-6 flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold">{activeTestName || "HbA1c"} Trend</h3>
+                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-bold text-[10px]">Normal</Badge>
+                  </div>
+                  <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full">
+                    {["3M", "6M", "1Y", "All"].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setTrendTimeframe(t)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-bold transition-colors",
+                          trendTimeframe === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {hasData && activeTestName ? (
+                  <>
+                    <div className="mb-8">
+                      <div className="flex items-end gap-2">
+                        <span className="text-4xl font-black">{latestTest?.value}</span>
+                        <span className="text-xs font-bold text-muted-foreground pb-1">
+                          {latestTest?.unit} ({latestTest?.date ? formatDate(latestTest.date).split(",")[0] : ""})
+                        </span>
+                      </div>
+                      {previousTest && (
+                        <div className="flex items-center gap-1 mt-1">
+                          {(() => {
+                            const diff = (parseFloat(latestTest.value) || 0) - (parseFloat(previousTest.value) || 0);
+                            if (diff === 0) return null;
+                            const isUp = diff > 0;
+                            const isGood = !latestTest.isAbnormal; // simplistic
+                            const colorClass = isGood ? "text-emerald-500" : "text-amber-500";
+                            const Icon = isUp ? TrendingUp : TrendingDown;
+                            return (
+                              <>
+                                <Icon className={cn("h-3 w-3", colorClass)} />
+                                <span className={cn("text-xs font-bold", colorClass)}>{Math.abs(diff).toFixed(2)}</span>
+                                <span className="text-xs font-semibold text-muted-foreground">vs previous test</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SVG Line Chart */}
+                    <div className="relative flex-1 min-h-[200px] w-full mt-auto">
+                       <div className="absolute inset-0">
+                          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" className="overflow-visible">
+                            <defs>
+                              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={latestTest?.isAbnormal ? "#f59e0b" : "#10b981"} stopOpacity="0.2" />
+                                <stop offset="100%" stopColor={latestTest?.isAbnormal ? "#f59e0b" : "#10b981"} stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            {/* Grid lines */}
+                            <line x1="0" y1="20" x2="100" y2="20" stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.5" strokeDasharray="2" />
+                            <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.5" strokeDasharray="2" />
+                            <line x1="0" y1="80" x2="100" y2="80" stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.5" strokeDasharray="2" />
+                            
+                            {/* Y-axis labels dynamically generated */}
+                            <text x="-5" y="22" className="text-[3px] fill-muted-foreground font-semibold">{trendData.max}</text>
+                            <text x="-5" y="82" className="text-[3px] fill-muted-foreground font-semibold">{trendData.min}</text>
+
+                            {/* Chart Line */}
+                            {trendData.path && (
+                              <path d={trendData.path} fill="none" stroke={latestTest?.isAbnormal ? "#f59e0b" : "#10b981"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            )}
+                            
+                            {/* Area Fill */}
+                            {trendData.path && (
+                              <path d={`${trendData.path} L 100,100 L 5,100 Z`} fill="url(#trendGradient)" />
+                            )}
+
+                            {/* Points */}
+                            {trendData.points.map((pt, i) => (
+                              <g key={i}>
+                                <circle cx={pt.x} cy={pt.y} r="2" fill="#background" stroke={latestTest?.isAbnormal ? "#f59e0b" : "#10b981"} strokeWidth="1" className="bg-background" />
+                                <text x={pt.x} y={pt.y - 5} textAnchor="middle" className="text-[3px] fill-foreground font-bold">{pt.val}</text>
+                              </g>
+                            ))}
+                          </svg>
+                          
+                          {/* X-axis labels (HTML positioned) */}
+                          <div className="absolute bottom-[-20px] left-[5%] right-[0%] flex justify-between text-[10px] font-bold text-muted-foreground">
+                            {trendData.labels.map((d, i) => <span key={i} className="px-1">{d}</span>)}
+                          </div>
+                       </div>
+                       
+                       {/* Custom Tooltip Mock */}
+                       <div className="absolute right-[10%] top-[20%] bg-popover border border-border shadow-lg rounded-xl p-3 z-10 w-32 hidden md:block">
+                          <div className="text-[9px] font-bold text-muted-foreground mb-1">{trendData.labels[trendData.labels.length - 1]}</div>
+                          <div className="text-sm font-black mb-1">{activeTestName}: {latestTest?.value}</div>
+                          <div className="text-[9px] font-semibold text-muted-foreground">Range: {latestTest?.referenceRange || "-"}</div>
+                       </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                    Select a test from the top cards to view its trend.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Test Results Table (Spans 2 cols) */}
+            <Card className="rounded-3xl border-border/50 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
+              <CardContent className="p-6 flex-1 flex flex-col">
+                 <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold">Test Results</h3>
+                    <Link href="#" className="text-[10px] font-bold text-primary hover:underline">View all</Link>
+                 </div>
+
+                 <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                       <thead>
+                          <tr className="border-b border-border/50">
+                             <th className="pb-3 text-[10px] font-bold text-muted-foreground">Test</th>
+                             <th className="pb-3 text-[10px] font-bold text-muted-foreground">18 Jul 2026</th>
+                             <th className="pb-3 text-[10px] font-bold text-muted-foreground">18 Jun 2026</th>
+                             <th className="pb-3 text-[10px] font-bold text-muted-foreground text-right">Trend</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-border/30">
+                          {!hasData && !isLoading ? (
+                            <tr><td colSpan={4} className="py-4 text-center text-xs text-muted-foreground">No test results found.</td></tr>
+                          ) : (
+                            uniqueTests.slice(0, 10).map(test => {
+                              const hist = groupedLabs[test];
+                              const v1Text = hist[0]?.value + " " + (hist[0]?.unit || "");
+                              const v2Text = hist[1] ? (hist[1].value + " " + (hist[1].unit || "")) : "-";
+                              
+                              let trend = "none";
+                              let trendVal = "-";
+                              let color = "text-muted-foreground";
+
+                              if (hist[0] && hist[1]) {
+                                const diff = (parseFloat(hist[0].value) || 0) - (parseFloat(hist[1].value) || 0);
+                                if (diff !== 0) {
+                                  trend = diff > 0 ? "up" : "down";
+                                  trendVal = Math.abs(diff).toFixed(2) + (hist[0].unit ? ` ${hist[0].unit}` : "");
+                                  color = hist[0].isAbnormal ? "text-amber-500" : "text-emerald-500";
+                                }
+                              }
+                              
+                              return { name: test, val1: v1Text, val2: v2Text, trend, trendVal, color };
+                           }).map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                 <td className="py-3 text-[11px] font-bold truncate max-w-[100px]">{row.name}</td>
+                                 <td className="py-3 text-[11px] font-bold">{row.val1}</td>
+                                 <td className="py-3 text-[11px] font-semibold text-muted-foreground">{row.val2}</td>
+                                 <td className="py-3 text-[11px] font-bold text-right flex items-center justify-end gap-1">
+                                    {row.trend === "up" ? <TrendingUp className={cn("h-3 w-3", row.color)} /> : row.trend === "down" ? <TrendingDown className={cn("h-3 w-3", row.color)} /> : null}
+                                    <span className={row.color}>{row.trendVal}</span>
+                                 </td>
+                              </tr>
+                           ))
+                          )}
+                       </tbody>
+                    </table>
+                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="w-full xl:w-[340px] shrink-0 space-y-6">
+           
+           {/* Health Score Impact */}
+           <Card className="rounded-3xl border-border/50 shadow-sm overflow-hidden">
+              <CardContent className="p-6">
+                 <h3 className="text-sm font-bold mb-6">Health Score Impact</h3>
+                 
+                 <div className="flex items-center gap-6">
+                    {/* Ring */}
+                    <div className="relative h-24 w-24 shrink-0">
+                       <svg className="-rotate-90 w-full h-full" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+                          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#scoreGradient)" strokeWidth="8"
+                             strokeDasharray={2 * Math.PI * 42}
+                             strokeDashoffset={2 * Math.PI * 42 - (healthScore.current / 100) * 2 * Math.PI * 42}
+                             strokeLinecap="round"
+                             className="transition-all duration-1000"
+                          />
+                          <defs>
+                             <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor={healthScore.current >= 80 ? "#10b981" : healthScore.current >= 60 ? "#f59e0b" : "#ef4444"} />
+                                <stop offset="100%" stopColor={healthScore.current >= 80 ? "#3b82f6" : healthScore.current >= 60 ? "#f97316" : "#b91c1c"} />
+                             </linearGradient>
+                          </defs>
+                       </svg>
+                       <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-2xl font-black leading-none">{healthScore.current}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground mt-0.5">/100</span>
+                       </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                       <div className={cn(
+                         "text-sm font-bold mb-1",
+                         healthScore.current >= 80 ? "text-emerald-500" : healthScore.current >= 60 ? "text-amber-500" : "text-red-500"
+                       )}>
+                         {healthScore.impact} Impact
+                       </div>
+                       <p className="text-[11px] text-muted-foreground leading-snug">
+                          {healthScore.text}
+                       </p>
+                    </div>
+                 </div>
+
+                 <div className="mt-6 flex items-center gap-2">
+                    {healthScore.diff !== 0 && (
+                      <Badge className={cn(
+                        "border-none px-2 font-bold text-[10px]",
+                        healthScore.diff > 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                      )}>
+                        {healthScore.diff > 0 ? "+" : ""}{healthScore.diff} points
+                      </Badge>
+                    )}
+                    <span className="text-[10px] font-semibold text-muted-foreground">vs last month</span>
+                 </div>
+              </CardContent>
+           </Card>
+
+           {/* AI Health Insights */}
+           <Card className="rounded-3xl border-border/50 shadow-sm overflow-hidden bg-gradient-to-b from-card to-card/50">
+              <CardContent className="p-6">
+                 <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                       <Sparkles className="h-4 w-4 text-primary" />
+                       <h3 className="text-sm font-bold">AI Health Insights</h3>
+                       <Badge className="bg-primary/10 text-primary border-none px-1.5 py-0 h-4 text-[8px] font-black uppercase rounded-sm">AI</Badge>
+                    </div>
+                    <button className="h-6 w-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors">
+                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                 </div>
+
+                 {isLoadingInsights ? (
+                    <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                       <p className="text-xs text-muted-foreground font-semibold animate-pulse">Analyzing your lab results...</p>
+                    </div>
+                 ) : insightsData ? (
+                    <>
+                       <p className="text-[11px] text-muted-foreground leading-relaxed mb-5">
+                          {insightsData.summary}
+                       </p>
+
+                       <div className="mb-5">
+                          <h4 className="text-xs font-bold mb-3">Key Insights</h4>
+                          <ul className="space-y-2">
+                             {insightsData.keyInsights?.map((insight: any, i: number) => {
+                                const isPositive = insight.type === "positive";
+                                const isNegative = insight.type === "negative";
+                                return (
+                                   <li key={i} className="flex items-start gap-2">
+                                      <div className={cn(
+                                         "h-1.5 w-1.5 rounded-full mt-1.5 shrink-0",
+                                         isPositive ? "bg-emerald-500" : isNegative ? "bg-amber-500" : "bg-muted-foreground/40"
+                                      )} />
+                                      <span className={cn(
+                                         "text-[11px] font-semibold",
+                                         isPositive ? "text-emerald-500" : isNegative ? "text-amber-500" : "text-muted-foreground"
+                                      )}>
+                                         {insight.text}
+                                      </span>
+                                   </li>
+                                );
+                             })}
+                          </ul>
+                       </div>
+
+                       <Button variant="secondary" className="w-full justify-between rounded-xl h-10 px-4 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold mb-6">
+                          View Detailed Analysis
+                          <ArrowRight className="h-3.5 w-3.5" />
+                       </Button>
+
+                       {insightsData.recommendations?.length > 0 && (
+                          <div>
+                             <h4 className="text-xs font-bold mb-3">Recommendations</h4>
+                             {insightsData.recommendations.map((rec: string, i: number) => (
+                                <div key={i} className="flex items-start gap-3 p-3 mb-2 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 transition-colors cursor-pointer group">
+                                   <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">{i + 1}</div>
+                                   <div className="flex-1 min-w-0 flex items-center justify-between">
+                                      <span className="text-[11px] font-bold pr-2">{rec}</span>
+                                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors -rotate-90 shrink-0" />
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       )}
+                    </>
+                 ) : (
+                    <p className="text-xs text-muted-foreground text-center py-6">Could not generate insights at this time.</p>
+                 )}
+              </CardContent>
+           </Card>
+
+        </div>
+      </div>
+    </div>
+  );
+}

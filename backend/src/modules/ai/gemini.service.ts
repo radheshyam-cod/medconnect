@@ -386,6 +386,53 @@ Extractions:
 ${JSON.stringify(extractions)}`;
   }
 
+  async generateLabInsights(labs: any[]) {
+    if (!this.genAI) {
+      return this.fallbackLabInsights();
+    }
+
+    try {
+      const prompt = `You are an expert AI health assistant analyzing a patient's recent lab results.
+Analyze the following lab results and generate personalized, actionable insights.
+Return strictly a JSON object matching this exact structure:
+{
+  "summary": "A concise 2-sentence summary of their overall lab health and any notable changes.",
+  "keyInsights": [
+    {
+      "text": "The insight observation (e.g. 'Vitamin D levels are low')",
+      "type": "positive" | "negative" | "neutral"
+    }
+  ],
+  "recommendations": [
+    "A practical, actionable recommendation based on the results"
+  ]
+}
+
+Ensure you provide between 3 to 5 key insights and 1 to 3 recommendations. If there are no labs, return a generic encouraging message.
+
+Recent Lab Results:
+${JSON.stringify(labs.slice(0, 20), null, 2)}`;
+
+      const text = await this.generateWithFallback(prompt, { responseMimeType: 'application/json' });
+      return JSON.parse(text);
+    } catch (error) {
+      this.logger.error('Gemini lab insights generation failed', error);
+      return this.fallbackLabInsights();
+    }
+  }
+
+  private fallbackLabInsights() {
+    return {
+      summary: "Your lab results are being monitored. Upload more recent reports for deeper insights.",
+      keyInsights: [
+        { text: "Continue maintaining a healthy lifestyle.", type: "neutral" }
+      ],
+      recommendations: [
+        "Upload recent blood tests or lab reports to get personalized AI health insights."
+      ]
+    };
+  }
+
   private fallbackExtraction() {
     return {
       diseases: ['General Health Maintenance'],

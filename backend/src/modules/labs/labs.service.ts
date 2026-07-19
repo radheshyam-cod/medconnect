@@ -7,6 +7,7 @@ import { MemorySynchronizer } from '../memory/memory-synchronizer.service';
 import { MemoryLogger } from '../memory/memory-logger.service';
 import { FamilyService } from '../family/family.service';
 import { ForbiddenException } from '@nestjs/common';
+import { GeminiService } from '../ai/gemini.service';
 
 @Injectable()
 export class LabsService {
@@ -15,6 +16,7 @@ export class LabsService {
     private readonly memorySynchronizer: MemorySynchronizer,
     private readonly memoryLogger: MemoryLogger,
     private readonly familyService: FamilyService,
+    private readonly geminiService: GeminiService,
   ) {}
 
   private async getInternalUserId(clerkId: string) {
@@ -102,6 +104,25 @@ export class LabsService {
       page: options.page,
       limit: options.limit
     };
+  }
+
+  async generateInsights(clerkId: string, patientId?: string) {
+    const userId = await this.getInternalUserId(clerkId);
+    let targetUserId = userId;
+
+    if (patientId && patientId !== userId) {
+      const hasAccess = await this.familyService.verifyAccess(userId, patientId);
+      if (!hasAccess) throw new ForbiddenException('You do not have access to this patient\'s records');
+      targetUserId = patientId;
+    }
+
+    const recentLabs = await this.prisma.labResult.findMany({
+      where: { userId: targetUserId },
+      orderBy: { date: 'desc' },
+      take: 30, // Get enough to see trends
+    });
+
+    return this.geminiService.generateLabInsights(recentLabs);
   }
 
   async findOne(id: string, clerkId: string, patientId?: string) {
